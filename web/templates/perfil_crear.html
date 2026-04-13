@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Configura tu negocio - Esteticai{% endblock %}
+{% block content %}
+<div class="setup-container">
+    <div class="setup-card">
+        <h2>Configura tu negocio</h2>
+        <p class="setup-desc">Cuanto mas me cuentes, mejor sera el contenido que genere para ti.</p>
+        <form method="post" action="/perfil/crear">
+            <div class="form-group">
+                <label for="nombre_negocio">Nombre de tu negocio *</label>
+                <input type="text" id="nombre_negocio" name="nombre_negocio" required
+                       placeholder="Ej: Clinica Bella Piel">
+            </div>
+            <div class="form-group">
+                <label for="propietaria">Tu nombre</label>
+                <input type="text" id="propietaria" name="propietaria"
+                       placeholder="Ej: Laura Martinez">
+            </div>
+            <div class="form-group">
+                <label for="ciudad">Ciudad</label>
+                <input type="text" id="ciudad" name="ciudad" placeholder="Ej: Madrid">
+            </div>
+            <div class="form-group">
+                <label for="tipo_negocio">Tipo de negocio</label>
+                <select id="tipo_negocio" name="tipo_negocio">
+                    <option value="Centro de estetica">Centro de estetica</option>
+                    <option value="Clinica de estetica facial y corporal">Clinica de estetica facial y corporal</option>
+                    <option value="Salon de belleza">Salon de belleza</option>
+                    <option value="Spa">Spa</option>
+                    <option value="Freelance esteticista">Freelance esteticista</option>
+                    <option value="Peluqueria con estetica">Peluqueria con estetica</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="servicios">Servicios que ofreces (uno por linea) *</label>
+                <textarea id="servicios" name="servicios" rows="6" required
+                          placeholder="Limpieza facial profunda
+Tratamiento antimanchas
+Radiofrecuencia facial
+Depilacion laser"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="productos">Productos que vendes (uno por linea)</label>
+                <textarea id="productos" name="productos" rows="3"
+                          placeholder="Serum vitamina C
+Crema hidratante facial"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="tono">Tono de comunicacion</label>
+                <select id="tono" name="tono">
+                    <option value="cercano">Cercano (como una amiga)</option>
+                    <option value="profesional">Profesional (clinica medica)</option>
+                    <option value="divertido">Divertido (joven y fresco)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="instagram_handle">Instagram</label>
+                <input type="text" id="instagram_handle" name="instagram_handle"
+                       placeholder="@tunegocio">
+            </div>
+            <button type="submit" class="btn btn-primary btn-full">Guardar y empezar</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

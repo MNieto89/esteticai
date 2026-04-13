@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar">
+    <div class="nav-brand">Esteticai</div>
+    <div class="nav-info">{{ perfil.nombre_negocio }}</div>
+    <div class="nav-actions">
+        <a href="/perfil/crear" class="nav-link">Perfil</a>
+        <a href="/logout" class="nav-link">Salir</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <div class="dash-header">
+        <h1>Hola, {{ user.nombre }}!</h1>
+        <p>Que quieres crear hoy para <strong>{{ perfil.nombre_negocio }}</strong>?</p>
+    </div>
+
+    <div class="generators">
+        <!-- COPY -->
+        <div class="gen-card" id="card-copy">
+            <div class="gen-icon">&#9997;</div>
+            <h3>Generar Copy</h3>
+            <p>Texto + hashtags + CTA para tus posts</p>
+            <div class="gen-form" id="form-copy" style="display:none;">
+                <select id="copy-tipo">
+                    <option value="EDUCATIVO">Educativo</option>
+                    <option value="ANTES_DESPUES">Antes y despues</option>
+                    <option value="TESTIMONIO">Testimonio</option>
+                    <option value="PRODUCTO">Producto</option>
+                    <option value="DETRAS_DE_CAMARAS">Detras de camaras</option>
+                    <option value="TENDENCIA">Tendencia</option>
+                    <option value="PROMOCION">Promocion</option>
+                    <option value="PERSONAL">Personal</option>
+                </select>
+                <select id="copy-servicio">
+                    {% for s in perfil.servicios %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                    {% for p in perfil.productos %}
+                    <option value="{{ p }}">{{ p }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-primary" onclick="generarCopy()">Generar</button>
+            </div>
+            <div class="gen-result" id="result-copy" style="display:none;"></div>
+        </div>
+
+        <!-- IMAGEN -->
+        <div class="gen-card" id="card-imagen">
+            <div class="gen-icon">&#128247;</div>
+            <h3>Generar Imagen</h3>
+            <p>Foto profesional generada con IA</p>
+            <div class="gen-form" id="form-imagen" style="display:none;">
+                <select id="img-servicio">
+                    {% for s in perfil.servicios %}
+                    <option value="{{ s }}">{{ s }}</option>
+                    {% endfor %}
+                    {% for p in perfil.productos %}
+                    <option value="{{ p }}">{{ p }}</option>
+                    {% endfor %}
+                </select>
+                <select id="img-tipo">
+                    <option value="post_feed">Post para feed</option>
+                    <option value="story">Story</option>
+                    <option value="reel_portada">Portada de Reel</option>
+                    <option value="carrusel">Carrusel</option>
+                    <option value="antes_despues">Antes y despues</option>
+                    <option value="producto">Foto de producto</option>
+                </select>
+                <button class="btn btn-primary" onclick="generarImagen()">Generar</button>
+            </div>
+            <div class="gen-result" id="result-imagen" style="display:none;"></div>
+        </div>
+
+        <!-- VIDEO -->
+        <div class="gen-card" id="card-video">
+            <div class="gen-icon">&#127910;</div>
+            <h3>Crear Video</h3>
+            <p>Convierte tu imagen en Reel o TikTok</p>
+            <div class="gen-form" id="form-video" style="display:none;">
+                <input type="text" id="video-url" placeholder="URL de la imagen (genera una primero)" readonly>
+                <select id="video-movimiento">
+                    <option value="zoom_suave">Zoom suave (productos)</option>
+                    <option value="panoramica">Panoramica (clinicas)</option>
+                    <option value="reveal_dramatico">Revelacion dramatica (antes/despues)</option>
+                    <option value="ambiente_relajante">Ambiente relajante (spa)</option>
+                    <option value="producto_360">Rotacion de producto</option>
+                    <option value="close_up">Primer plano (tratamientos)</option>
+                </select>
+                <select id="video-duracion">
+                    <option value="5">5 segundos (story)</option>
+                    <option value="10">10 segundos (reel corto)</option>
+                </select>
+                <button class="btn btn-primary" onclick="generarVideo()" id="btn-video" disabled>Genera imagen primero</button>
+            </div>
+            <div class="gen-result" id="result-video" style="display:none;"></div>
+        </div>
+
+        <!-- CALENDARIO -->
+        <div class="gen-card" id="card-calendario">
+            <div class="gen-icon">&#128197;</div>
+            <h3>Calendario Semanal</h3>
+            <p>Plan completo de contenido para la semana</p>
+            <div class="gen-form" id="form-calendario" style="display:none;">
+                <input type="text" id="cal-contexto" placeholder="Contexto extra (ej: promo 2x1 esta semana)">
+                <button class="btn btn-primary" onclick="generarCalendario()">Generar</button>
+            </div>
+            <div class="gen-result" id="result-calendario" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    {% if generaciones %}
+    <div class="historial">
+        <h2>Historial reciente</h2>
+        <div class="historial-grid">
+            {% for gen in generaciones %}
+            <div class="historial-item historial-{{ gen.tipo }}">
+                <span class="historial-tipo">{{ gen.tipo }}</span>
+                <span class="historial-fecha">{{ gen.creado_en[:16] }}</span>
+                {% if gen.imagen_url and gen.imagen_url.startswith('http') %}
+                <img src="{{ gen.imagen_url }}" alt="Imagen generada" class="historial-img" loading="lazy">
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
