@@ -93,10 +93,10 @@ PERFIL DE LA CLIENTA:
 - Tipo: {perfil['tipo_negocio']}
 - Servicios: {', '.join(perfil['servicios'])}
 - Productos: {', '.join(perfil['productos']) if perfil['productos'] else 'No vende productos'}
-- Tono de comunicacion: {perfil['tono']}
-- Valores de marca: {', '.join(perfil['valores'])}
-- Publico objetivo: {perfil['publico']}
-- Redes sociales: {', '.join(perfil['redes'])}
+- Tono de comunicacion: {perfil.get('tono', 'cercano')}
+- Valores de marca: {', '.join(perfil.get('valores', [])) or 'No especificados'}
+- Publico objetivo: {perfil.get('publico', '') or 'Mujeres interesadas en estetica y cuidado personal'}
+- Redes sociales: {', '.join(perfil.get('redes', ['Instagram']))}
 - Instagram: {perfil.get('instagram_handle', 'No especificado')}
 
 SEMANA A PLANIFICAR:

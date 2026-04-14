@@ -83,6 +83,10 @@ def init_db():
             productos TEXT DEFAULT '[]',
             tono TEXT DEFAULT 'cercano',
             instagram_handle TEXT DEFAULT '',
+            valores TEXT DEFAULT '[]',
+            publico TEXT DEFAULT '',
+            redes TEXT DEFAULT '["Instagram"]',
+            mejores_horarios TEXT DEFAULT '{}',
             creado_en TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         );
@@ -100,6 +104,14 @@ def init_db():
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         );
     """)
+    # Migracion: anadir columnas si no existen (para DBs creadas antes)
+    try:
+        db.execute("SELECT valores FROM perfiles LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE perfiles ADD COLUMN valores TEXT DEFAULT '[]'")
+        db.execute("ALTER TABLE perfiles ADD COLUMN publico TEXT DEFAULT ''")
+        db.execute("ALTER TABLE perfiles ADD COLUMN redes TEXT DEFAULT '[\"Instagram\"]'")
+        db.execute("ALTER TABLE perfiles ADD COLUMN mejores_horarios TEXT DEFAULT '{}'")
     db.commit()
     db.close()
 
@@ -150,6 +162,10 @@ def get_perfil_activo(user_id):
             "productos": json.loads(perfil["productos"]),
             "tono": perfil["tono"],
             "instagram_handle": perfil["instagram_handle"],
+            "valores": json.loads(perfil["valores"] or "[]"),
+            "publico": perfil["publico"] or "",
+            "redes": json.loads(perfil["redes"] or '["Instagram"]'),
+            "mejores_horarios": json.loads(perfil["mejores_horarios"] or "{}"),
         }
     return None
 
@@ -274,15 +290,27 @@ async def perfil_crear_submit(request: Request):
     form = await request.form()
     servicios = [s.strip() for s in form.get("servicios", "").split("\n") if s.strip()]
     productos = [p.strip() for p in form.get("productos", "").split("\n") if p.strip()]
+    valores = [v.strip() for v in form.get("valores", "").split("\n") if v.strip()]
+    redes_seleccionadas = form.getlist("redes")
+    if not redes_seleccionadas:
+        redes_seleccionadas = ["Instagram"]
+    mejores_horarios = {}
+    for red in redes_seleccionadas:
+        horario = form.get(f"horario_{red.lower()}", "")
+        if horario:
+            mejores_horarios[red] = horario
     db = get_db()
     db.execute(
         """INSERT INTO perfiles (usuario_id, nombre_negocio, propietaria, ciudad,
-           tipo_negocio, servicios, productos, tono, instagram_handle)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           tipo_negocio, servicios, productos, tono, instagram_handle,
+           valores, publico, redes, mejores_horarios)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (user["id"], form.get("nombre_negocio", ""), form.get("propietaria", ""),
          form.get("ciudad", ""), form.get("tipo_negocio", "Centro de estetica"),
          json.dumps(servicios), json.dumps(productos),
-         form.get("tono", "cercano"), form.get("instagram_handle", ""))
+         form.get("tono", "cercano"), form.get("instagram_handle", ""),
+         json.dumps(valores), form.get("publico", ""),
+         json.dumps(redes_seleccionadas), json.dumps(mejores_horarios))
     )
     db.commit()
     db.close()
