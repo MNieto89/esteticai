@@ -174,12 +174,12 @@ async def home(request: Request):
     user = get_usuario_actual(request)
     if user:
         return RedirectResponse("/dashboard", status_code=303)
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse("home.html", context={"request": request}, request=request)
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse("login.html", context={"request": request, "error": None}, request=request)
 
 
 @app.post("/login")
@@ -188,16 +188,16 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
     user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
     db.close()
     if not user or user["password_hash"] != hash_password(password):
-        return templates.TemplateResponse("login.html", {
+        return templates.TemplateResponse("login.html", context={
             "request": request, "error": "Email o contrasena incorrectos"
-        })
+        }, request=request)
     request.session["user_id"] = user["id"]
     return RedirectResponse("/dashboard", status_code=303)
 
 
 @app.get("/registro", response_class=HTMLResponse)
 async def registro_page(request: Request):
-    return templates.TemplateResponse("registro.html", {"request": request, "error": None})
+    return templates.TemplateResponse("registro.html", context={"request": request, "error": None}, request=request)
 
 
 @app.post("/registro")
@@ -207,9 +207,9 @@ async def registro_submit(request: Request, nombre: str = Form(...),
     existe = db.execute("SELECT id FROM usuarios WHERE email = ?", (email,)).fetchone()
     if existe:
         db.close()
-        return templates.TemplateResponse("registro.html", {
+        return templates.TemplateResponse("registro.html", context={
             "request": request, "error": "Este email ya esta registrado"
-        })
+        }, request=request)
     db.execute(
         "INSERT INTO usuarios (email, password_hash, nombre) VALUES (?, ?, ?)",
         (email, hash_password(password), nombre)
@@ -247,12 +247,12 @@ async def dashboard(request: Request):
     ).fetchall()
     db.close()
 
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse("dashboard.html", context={
         "request": request,
         "user": user,
         "perfil": perfil,
         "generaciones": generaciones,
-    })
+    }, request=request)
 
 
 # ============================================================
@@ -264,7 +264,7 @@ async def perfil_crear_page(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("perfil_crear.html", {"request": request, "user": user})
+    return templates.TemplateResponse("perfil_crear.html", context={"request": request, "user": user}, request=request)
 
 
 @app.post("/perfil/crear")
