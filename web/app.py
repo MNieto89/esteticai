@@ -33,13 +33,22 @@ import sqlite3
 # ============================================================
 
 BASE_DIR = Path(__file__).parent
-DB_PATH = BASE_DIR / "esteticai.db"
+# En produccion, usar /tmp para la DB (filesystem escribible en Railway)
+if os.environ.get("RAILWAY_ENVIRONMENT"):
+    DB_PATH = Path("/tmp/esteticai.db")
+else:
+    DB_PATH = BASE_DIR / "esteticai.db"
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app = FastAPI(title="Esteticai", version="1.0")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# Health check para verificar que la app arranca
+@app.get("/health")
+async def health():
+    return {"status": "ok", "version": "1.0"}
 
 
 # ============================================================
