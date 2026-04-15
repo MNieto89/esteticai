@@ -98,6 +98,49 @@
             <div class="gen-result" id="result-video" style="display:none;"></div>
         </div>
 
+        <!-- ANTES / DESPUES -->
+        <div class="gen-card" id="card-antes-despues">
+            <div class="gen-icon">&#128260;</div>
+            <h3>Antes y Despues</h3>
+            <p>Sube las dos fotos y creamos la composicion lista para redes</p>
+            <div class="gen-form" id="form-antes-despues" style="display:none;">
+                <div class="ad-uploads">
+                    <div class="ad-upload-box">
+                        <input type="file" id="ad-foto-antes" accept="image/*" style="position:absolute;width:0;height:0;overflow:hidden;" onchange="previewAD(this, 'antes')">
+                        <div class="upload-area upload-area-small" onclick="document.getElementById('ad-foto-antes').click()">
+                            <div id="ad-placeholder-antes">
+                                <span class="upload-icon">&#128247;</span>
+                                <span>ANTES</span>
+                                <span class="upload-hint">Pulsa para subir</span>
+                            </div>
+                            <img id="ad-preview-antes" style="display:none; max-width:100%; border-radius:8px;">
+                        </div>
+                    </div>
+                    <div class="ad-upload-box">
+                        <input type="file" id="ad-foto-despues" accept="image/*" style="position:absolute;width:0;height:0;overflow:hidden;" onchange="previewAD(this, 'despues')">
+                        <div class="upload-area upload-area-small" onclick="document.getElementById('ad-foto-despues').click()">
+                            <div id="ad-placeholder-despues">
+                                <span class="upload-icon">&#128247;</span>
+                                <span>DESPUES</span>
+                                <span class="upload-hint">Pulsa para subir</span>
+                            </div>
+                            <img id="ad-preview-despues" style="display:none; max-width:100%; border-radius:8px;">
+                        </div>
+                    </div>
+                </div>
+                <select id="ad-plantilla">
+                    <option value="side_by_side">Clasico lado a lado (Feed 1:1)</option>
+                    <option value="premium">Marco premium (Feed 4:5)</option>
+                    <option value="diagonal">Corte diagonal (Feed 1:1)</option>
+                    <option value="story">Formato Story (9:16)</option>
+                </select>
+                <input type="text" id="ad-tratamiento" placeholder="Nombre del tratamiento (ej: Radiofrecuencia facial)">
+                <input type="text" id="ad-sesiones" placeholder="Sesiones (ej: Resultado de 6 sesiones)">
+                <button class="btn btn-primary" onclick="componerAntesDespues()" id="btn-ad" disabled>Sube las dos fotos</button>
+            </div>
+            <div class="gen-result" id="result-antes-despues" style="display:none;"></div>
+        </div>
+
         <!-- MEJORAR FOTO -->
         <div class="gen-card" id="card-foto">
             <div class="gen-icon">&#10024;</div>

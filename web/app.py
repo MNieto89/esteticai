@@ -26,6 +26,7 @@ from agents.content_engine import generar_contenido_semanal, generar_copy_indivi
 from agents.image_engine import generar_imagen_automatica, generar_prompt_automatico, ESTILOS_PUBLICACION
 from agents.video_engine import generar_video_desde_imagen, MOVIMIENTOS_VIDEO, MOVIMIENTO_RECOMENDADO
 from agents.photo_engine import procesar_foto_tratamiento, subir_imagen_a_fal, FONDOS_PROFESIONALES, obtener_fondos_disponibles
+from agents.composer_engine import componer_antes_despues, obtener_plantillas_disponibles, PLANTILLA_INFO
 
 import sqlite3
 
@@ -495,6 +496,80 @@ async def api_mejorar_foto(
 async def api_fondos_disponibles():
     """Devuelve la lista de fondos profesionales disponibles."""
     return JSONResponse({"fondos": obtener_fondos_disponibles()})
+
+
+# ============================================================
+# API - COMPOSICION ANTES/DESPUES
+# ============================================================
+
+@app.post("/api/componer-antes-despues")
+async def api_componer_antes_despues(
+    request: Request,
+    foto_antes: UploadFile = File(...),
+    foto_despues: UploadFile = File(...),
+    plantilla: str = Form("side_by_side"),
+    tratamiento: str = Form(""),
+    sesiones: str = Form(""),
+    cta: str = Form(""),
+):
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+    perfil = get_perfil_activo(user["id"])
+    if not perfil:
+        return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
+
+    # Leer las fotos
+    bytes_antes = await foto_antes.read()
+    bytes_despues = await foto_despues.read()
+
+    max_size = 10 * 1024 * 1024
+    if len(bytes_antes) > max_size or len(bytes_despues) > max_size:
+        return JSONResponse({"error": "Las fotos son demasiado grandes (max 10MB cada una)"}, status_code=400)
+
+    # Config de composicion con datos del perfil
+    config = {
+        "nombre_negocio": perfil.get("nombre_negocio", ""),
+        "tratamiento": tratamiento or "Resultados reales",
+        "sesiones": sesiones,
+        "cta": cta or "Reserva tu valoracion gratuita",
+        "color_marca": (199, 121, 135),  # Rosa Esteticai
+    }
+
+    try:
+        resultado = componer_antes_despues(
+            img_antes_bytes=bytes_antes,
+            img_despues_bytes=bytes_despues,
+            plantilla=plantilla,
+            config=config,
+        )
+
+        if "error" in resultado:
+            return JSONResponse({"error": resultado["error"]}, status_code=500)
+
+        # No guardamos image_bytes en la respuesta JSON
+        respuesta = {k: v for k, v in resultado.items() if k != "image_bytes"}
+
+        # Guardar en historial
+        guardar_generacion(
+            user["id"], perfil["id"], "antes_despues",
+            imagen_url=None,
+            metadata={
+                "plantilla": plantilla,
+                "tratamiento": tratamiento,
+                "tamano_kb": resultado.get("tamano_kb"),
+            },
+        )
+
+        return JSONResponse({"ok": True, "resultado": respuesta})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/plantillas-disponibles")
+async def api_plantillas_disponibles():
+    """Devuelve las plantillas de composicion disponibles."""
+    return JSONResponse({"plantillas": obtener_plantillas_disponibles()})
 
 
 # ============================================================

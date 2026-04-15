@@ -12,7 +12,8 @@ document.querySelectorAll('.gen-card').forEach(card => {
             e.target.tagName === 'LABEL' || e.target.tagName === 'IMG' ||
             e.target.closest('.upload-area') || e.target.closest('.foto-opciones') ||
             e.target.closest('.foto-comparacion') || e.target.closest('.foto-actions') ||
-            e.target.closest('.gen-result')) return;
+            e.target.closest('.ad-uploads') || e.target.closest('.ad-actions') ||
+            e.target.closest('.ad-resultado') || e.target.closest('.gen-result')) return;
         const form = this.querySelector('.gen-form');
         if (form) {
             const isVisible = form.style.display !== 'none';
@@ -405,6 +406,126 @@ function usarParaVideo(url) {
     document.getElementById('btn-video').disabled = false;
     document.getElementById('btn-video').textContent = 'Crear video';
     cardVideo.scrollIntoView({ behavior: 'smooth' });
+}
+
+
+// ============================================================
+// ANTES / DESPUES
+// ============================================================
+
+let adFotoAntes = null;
+let adFotoDespues = null;
+
+function previewAD(input, tipo) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024;
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+    if (file.size > maxSize) {
+        alert('La foto es demasiado grande. Maximo 10MB.');
+        input.value = '';
+        return;
+    }
+    if (!allowedTypes.includes(file.type)) {
+        alert('Formato no soportado. Usa JPG, PNG o WebP.');
+        input.value = '';
+        return;
+    }
+
+    if (tipo === 'antes') {
+        adFotoAntes = file;
+    } else {
+        adFotoDespues = file;
+    }
+
+    // Preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('ad-preview-' + tipo);
+        const placeholder = document.getElementById('ad-placeholder-' + tipo);
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+
+    // Activar boton si las dos fotos estan subidas
+    const btn = document.getElementById('btn-ad');
+    if (adFotoAntes && adFotoDespues) {
+        btn.disabled = false;
+        btn.textContent = 'Crear composicion';
+    }
+}
+
+async function componerAntesDespues() {
+    if (!adFotoAntes || !adFotoDespues) return;
+
+    const plantilla = document.getElementById('ad-plantilla').value;
+    const tratamiento = document.getElementById('ad-tratamiento').value;
+    const sesiones = document.getElementById('ad-sesiones').value;
+    const resultDiv = document.getElementById('result-antes-despues');
+    const btn = document.getElementById('btn-ad');
+
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="loading">Creando composicion...</div>';
+    btn.disabled = true;
+    btn.textContent = 'Creando...';
+
+    const formData = new FormData();
+    formData.append('foto_antes', adFotoAntes);
+    formData.append('foto_despues', adFotoDespues);
+    formData.append('plantilla', plantilla);
+    formData.append('tratamiento', tratamiento);
+    formData.append('sesiones', sesiones);
+
+    try {
+        const resp = await fetch('/api/componer-antes-despues', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            const r = data.resultado;
+            let html = '';
+            html += `<div class="ad-resultado">`;
+            html += `<img src="${r.image_base64}" class="ad-imagen-resultado" alt="Composicion antes/despues">`;
+            html += `<div class="ad-info">`;
+            html += `<span class="copy-tag">${r.plantilla_nombre}</span>`;
+            html += `<span class="copy-tag">${r.ancho}x${r.alto}</span>`;
+            html += `<span class="copy-tag">${r.tamano_kb} KB</span>`;
+            html += `</div>`;
+            html += `<div class="ad-actions">`;
+            html += `<a href="${r.image_base64}" download="antes_despues_${plantilla}.jpg" class="btn btn-primary">Descargar imagen</a>`;
+            html += `<button class="btn btn-secondary" onclick="resetAntesDespues()">Crear otra</button>`;
+            html += `</div>`;
+            html += `</div>`;
+            resultDiv.innerHTML = html;
+        } else {
+            resultDiv.innerHTML = `<div>Error: ${data.error}</div>`;
+        }
+    } catch (e) {
+        resultDiv.innerHTML = `<div>Error de conexion: ${e.message}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Crear composicion';
+}
+
+function resetAntesDespues() {
+    adFotoAntes = null;
+    adFotoDespues = null;
+    document.getElementById('ad-foto-antes').value = '';
+    document.getElementById('ad-foto-despues').value = '';
+    document.getElementById('ad-preview-antes').style.display = 'none';
+    document.getElementById('ad-preview-despues').style.display = 'none';
+    document.getElementById('ad-placeholder-antes').style.display = '';
+    document.getElementById('ad-placeholder-despues').style.display = '';
+    document.getElementById('btn-ad').disabled = true;
+    document.getElementById('btn-ad').textContent = 'Sube las dos fotos';
+    document.getElementById('result-antes-despues').style.display = 'none';
 }
 
 

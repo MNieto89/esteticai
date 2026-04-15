@@ -617,6 +617,49 @@ body {
     height: 18px;
 }
 
+/* Antes/Despues composition styles */
+.ad-uploads {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.ad-upload-box {
+    position: relative;
+}
+.upload-area-small {
+    min-height: 140px;
+    padding: 16px 12px;
+}
+.upload-area-small .upload-icon {
+    font-size: 28px;
+}
+.upload-area-small span {
+    font-size: 13px;
+}
+.ad-resultado {
+    text-align: center;
+}
+.ad-imagen-resultado {
+    max-width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    margin-bottom: 12px;
+}
+.ad-info {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 8px 0;
+}
+.ad-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
 /* Copy result styles */
 .copy-texto {
     line-height: 1.7;
