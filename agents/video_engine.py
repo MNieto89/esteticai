@@ -133,40 +133,51 @@ def generar_video_desde_imagen(url_imagen, prompt_movimiento=None,
             with_logs=True,
         )
 
-        video_url = result.get("video", {}).get("url", "")
-        if not video_url and "video_url" in result:
-            video_url = result["video_url"]
-        if not video_url:
-            # Buscar URL en la respuesta
-            for key_name in result:
-                val = result[key_name]
-                if isinstance(val, str) and val.startswith("http") and (".mp4" in val or "video" in val):
-                    video_url = val
-                    break
-                if isinstance(val, dict):
-                    for subkey in val:
-                        subval = val[subkey]
-                        if isinstance(subval, str) and subval.startswith("http"):
-                            video_url = subval
+        # Extraer URL del video - intentar multiples formatos de respuesta
+        video_url = ""
+        if isinstance(result, dict):
+            # Formato 1: {"video": {"url": "..."}}
+            if "video" in result and isinstance(result["video"], dict):
+                video_url = result["video"].get("url", "")
+            # Formato 2: {"video_url": "..."}
+            if not video_url:
+                video_url = result.get("video_url", "")
+            # Formato 3: {"output": {"url": "..."}}
+            if not video_url and "output" in result and isinstance(result["output"], dict):
+                video_url = result["output"].get("url", "")
+            # Formato 4: buscar cualquier URL de video en la respuesta
+            if not video_url:
+                for val in result.values():
+                    if isinstance(val, str) and val.startswith("http") and any(ext in val.lower() for ext in [".mp4", "video", "kling"]):
+                        video_url = val
+                        break
+                    if isinstance(val, dict):
+                        for subval in val.values():
+                            if isinstance(subval, str) and subval.startswith("http"):
+                                video_url = subval
+                                break
+                        if video_url:
                             break
 
         if video_url:
             print(f"[Esteticai] Video generado: {video_url}")
         else:
-            print(f"[Esteticai] Respuesta de la API: {json.dumps(result, indent=2)[:300]}")
+            print(f"[Esteticai] No se encontro URL. Respuesta: {json.dumps(result, indent=2, default=str)[:500]}")
 
         return {
-            "url": video_url or "[No se pudo extraer URL]",
+            "url": video_url or "",
             "prompt_movimiento": prompt,
             "duracion": duracion,
             "imagen_origen": url_imagen,
             "modelo": "kling-v2-master",
-            "raw_response": result,
         }
 
     except Exception as e:
-        print(f"[ERROR] Fallo al generar video: {e}")
-        return {"error": str(e)}
+        error_msg = str(e)
+        print(f"[ERROR] Fallo al generar video: {error_msg}")
+        if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+            return {"error": "La generacion de video tardo demasiado. Intentalo de nuevo con una duracion mas corta (5 segundos)."}
+        return {"error": error_msg}
 
 
 def generar_video_automatico(servicio, tipo_publicacion, perfil, url_imagen):

@@ -17,6 +17,215 @@ except ImportError:
     print("[INFO] SDK de Anthropic no instalado. Ejecutando en modo demo.")
     print("[INFO] Para usar la API real: pip3 install anthropic")
 
+# ============================================================
+# BASE DE CONOCIMIENTO DE SERVICIOS ESTETICOS
+# Informacion tecnica real para generar contenido creible
+# ============================================================
+
+SERVICIOS_ESTETICOS = {
+    # --- FACIALES ---
+    "limpieza facial": {
+        "descripcion": "Limpieza profunda profesional con extraccion, vapor y mascarilla personalizada",
+        "beneficios": ["Poros limpios", "Piel luminosa", "Previene imperfecciones", "Mejora textura"],
+        "publico_ideal": "Todo tipo de pieles, desde los 16 anos",
+        "frecuencia": "Cada 4-6 semanas",
+        "categoria": "facial",
+    },
+    "hidratacion facial": {
+        "descripcion": "Tratamiento intensivo de hidratacion con acido hialuronico y activos hidratantes",
+        "beneficios": ["Piel jugosa", "Reduce lineas finas", "Efecto glow inmediato", "Restaura barrera cutanea"],
+        "publico_ideal": "Pieles deshidratadas, maduras o danadas por el sol",
+        "frecuencia": "Cada 2-4 semanas",
+        "categoria": "facial",
+    },
+    "peeling quimico": {
+        "descripcion": "Exfoliacion quimica con acidos (glicolico, salicilico, mandelico) para renovar la piel",
+        "beneficios": ["Renueva la piel", "Reduce manchas", "Mejora textura", "Estimula colageno"],
+        "publico_ideal": "Pieles con manchas, cicatrices de acne, envejecimiento",
+        "frecuencia": "Cada 3-4 semanas (protocolo de 4-6 sesiones)",
+        "categoria": "facial",
+    },
+    "microdermoabrasion": {
+        "descripcion": "Exfoliacion mecanica con punta de diamante para renovar las capas superficiales",
+        "beneficios": ["Piel suave", "Reduce poro", "Mejora absorcion de productos", "Sin recuperacion"],
+        "publico_ideal": "Pieles apagadas, con poro dilatado o textura irregular",
+        "frecuencia": "Cada 2-3 semanas",
+        "categoria": "facial",
+    },
+    "radiofrecuencia facial": {
+        "descripcion": "Tratamiento con ondas de radiofrecuencia para estimular colageno y tensar la piel",
+        "beneficios": ["Efecto tensor", "Estimula colageno", "Redefine ovalo facial", "No invasivo"],
+        "publico_ideal": "A partir de 35 anos, pieles con flacidez leve a moderada",
+        "frecuencia": "Semanal durante 8-10 sesiones, mantenimiento mensual",
+        "categoria": "facial",
+    },
+    "tratamiento antimanchas": {
+        "descripcion": "Protocolo despigmentante con activos como vitamina C, acido kojico y retinol",
+        "beneficios": ["Reduce manchas", "Unifica tono", "Previene hiperpigmentacion", "Ilumina"],
+        "publico_ideal": "Pieles con manchas solares, melasma o hiperpigmentacion postinflamatoria",
+        "frecuencia": "Semanal o quincenal durante 2-3 meses",
+        "categoria": "facial",
+    },
+    "tratamiento antiacne": {
+        "descripcion": "Protocolo especifico para pieles acneicas con limpieza, regulacion seborreica y cicatrizacion",
+        "beneficios": ["Regula sebo", "Reduce brotes", "Mejora cicatrices", "Equilibra microbioma"],
+        "publico_ideal": "Adolescentes y adultos con acne activo o cicatrices",
+        "frecuencia": "Quincenal durante el tratamiento activo",
+        "categoria": "facial",
+    },
+    "mesoterapia facial": {
+        "descripcion": "Microinyecciones de vitaminas, aminoacidos y acido hialuronico en la dermis",
+        "beneficios": ["Hidratacion profunda", "Luminosidad", "Estimula colageno", "Efecto rejuvenecedor"],
+        "publico_ideal": "A partir de 30 anos, pieles desvitalizadas o con primeros signos de envejecimiento",
+        "frecuencia": "4-6 sesiones quincenales, mantenimiento trimestral",
+        "categoria": "facial",
+    },
+    "microneedling": {
+        "descripcion": "Microperforaciones controladas con dermapen para estimular la regeneracion natural",
+        "beneficios": ["Estimula colageno", "Mejora cicatrices", "Reduce poro", "Rejuvenece"],
+        "publico_ideal": "Cicatrices de acne, estrias, piel envejecida",
+        "frecuencia": "Cada 4-6 semanas, 3-6 sesiones",
+        "categoria": "facial",
+    },
+    # --- CORPORALES ---
+    "tratamiento reductor": {
+        "descripcion": "Combinacion de tecnicas para reducir grasa localizada y contorno corporal",
+        "beneficios": ["Reduce centimetros", "Mejora contorno", "Activa metabolismo local", "Drena liquidos"],
+        "publico_ideal": "Personas con grasa localizada resistente a dieta y ejercicio",
+        "frecuencia": "2-3 sesiones semanales durante 8-12 semanas",
+        "categoria": "corporal",
+    },
+    "tratamiento reafirmante": {
+        "descripcion": "Protocolo para mejorar la firmeza y elasticidad de la piel corporal",
+        "beneficios": ["Piel mas firme", "Reduce flacidez", "Estimula colageno", "Mejora textura"],
+        "publico_ideal": "Post-parto, perdida de peso, o envejecimiento cutaneo",
+        "frecuencia": "Semanal durante 10-12 sesiones",
+        "categoria": "corporal",
+    },
+    "masaje drenante": {
+        "descripcion": "Drenaje linfatico manual o mecanico para eliminar retencion de liquidos",
+        "beneficios": ["Reduce hinchazon", "Piernas ligeras", "Detoxifica", "Mejora circulacion"],
+        "publico_ideal": "Retencion de liquidos, piernas cansadas, post-operatorio",
+        "frecuencia": "Semanal o quincenal",
+        "categoria": "corporal",
+    },
+    "presoterapia": {
+        "descripcion": "Drenaje mecanico con botas de compresion secuencial",
+        "beneficios": ["Drena liquidos", "Mejora circulacion", "Reduce celulitis", "Piernas descansadas"],
+        "publico_ideal": "Retencion de liquidos, celulitis, piernas pesadas",
+        "frecuencia": "1-2 sesiones semanales",
+        "categoria": "corporal",
+    },
+    "tratamiento anticelulitis": {
+        "descripcion": "Protocolo combinado para reducir celulitis con ultrasonidos, masaje y activos",
+        "beneficios": ["Reduce piel de naranja", "Mejora textura", "Activa circulacion", "Reafirma"],
+        "publico_ideal": "Mujeres con celulitis en grados I a III",
+        "frecuencia": "2 sesiones semanales durante 10-12 semanas",
+        "categoria": "corporal",
+    },
+    "envoltura corporal": {
+        "descripcion": "Tratamiento con principios activos envueltos en film o vendas para potenciar absorcion",
+        "beneficios": ["Hidrata en profundidad", "Desintoxica", "Reduce centimetros", "Piel suave"],
+        "publico_ideal": "Todo tipo de pieles, ideal para preparar la piel en verano",
+        "frecuencia": "Semanal o quincenal",
+        "categoria": "corporal",
+    },
+    # --- LASER Y APARATOLOGIA ---
+    "depilacion laser": {
+        "descripcion": "Eliminacion del vello con laser de diodo o alejandrita, progresiva y duradera",
+        "beneficios": ["Eliminacion permanente", "Piel suave", "Sin irritaciones", "Ahorra tiempo"],
+        "publico_ideal": "Hombres y mujeres a partir de 16 anos con vello oscuro",
+        "frecuencia": "Cada 4-8 semanas segun zona, 6-10 sesiones",
+        "categoria": "laser",
+    },
+    "fotorejuvenecimiento ipl": {
+        "descripcion": "Luz pulsada intensa para tratar manchas, rojeces y mejorar textura de la piel",
+        "beneficios": ["Reduce manchas", "Mejora rojeces", "Unifica tono", "Estimula colageno"],
+        "publico_ideal": "Pieles con dano solar, rosácea leve, manchas superficiales",
+        "frecuencia": "Cada 3-4 semanas, 4-6 sesiones",
+        "categoria": "laser",
+    },
+    "cavitacion": {
+        "descripcion": "Ultrasonidos de baja frecuencia para romper adipocitos y reducir grasa localizada",
+        "beneficios": ["Reduce grasa localizada", "No invasivo", "Sin recuperacion", "Resultados medibles"],
+        "publico_ideal": "Grasa localizada resistente, sin obesidad general",
+        "frecuencia": "Semanal, 8-12 sesiones",
+        "categoria": "laser",
+    },
+    "criolipólisis": {
+        "descripcion": "Congelacion controlada de celulas grasas para su eliminacion natural",
+        "beneficios": ["Reduce hasta 25% grasa local", "Una sola sesion", "Sin cirugia", "Resultados permanentes"],
+        "publico_ideal": "Personas con bolsas de grasa localizada que no responden a dieta",
+        "frecuencia": "1-2 sesiones por zona, resultados en 2-3 meses",
+        "categoria": "laser",
+    },
+    # --- SPA Y BIENESTAR ---
+    "masaje relajante": {
+        "descripcion": "Masaje manual con aceites esenciales para aliviar tension y estres",
+        "beneficios": ["Relaja musculatura", "Reduce estres", "Mejora sueno", "Bienestar general"],
+        "publico_ideal": "Cualquier persona que necesite desconectar y relajarse",
+        "frecuencia": "Semanal o quincenal",
+        "categoria": "spa",
+    },
+    "ritual spa": {
+        "descripcion": "Experiencia completa de bienestar: exfoliacion, envoltura, masaje y aromaterapia",
+        "beneficios": ["Experiencia sensorial completa", "Piel renovada", "Relajacion profunda", "Desconexion total"],
+        "publico_ideal": "Regalos, ocasiones especiales, autocuidado",
+        "frecuencia": "Mensual o puntual",
+        "categoria": "spa",
+    },
+    "aromaterapia": {
+        "descripcion": "Tratamiento con aceites esenciales puros aplicados mediante masaje, inhalacion o bano",
+        "beneficios": ["Equilibrio emocional", "Reduce ansiedad", "Mejora sueno", "Bienestar holistico"],
+        "publico_ideal": "Personas con estres, ansiedad o necesidad de equilibrio emocional",
+        "frecuencia": "Semanal o quincenal",
+        "categoria": "spa",
+    },
+    # --- UNAS Y BELLEZA ---
+    "manicura semipermanente": {
+        "descripcion": "Esmaltado con gel que dura 2-3 semanas sin descascarillarse",
+        "beneficios": ["Duracion 2-3 semanas", "Brillo intenso", "Secado inmediato", "Protege la una"],
+        "publico_ideal": "Mujeres que quieren unas perfectas sin retocar frecuentemente",
+        "frecuencia": "Cada 2-3 semanas",
+        "categoria": "unas",
+    },
+    "extension de pestanas": {
+        "descripcion": "Aplicacion pelo a pelo o en abanico de pestanas sinteticas sobre las naturales",
+        "beneficios": ["Mirada impactante", "Sin maquillaje diario", "Efecto natural o dramatico", "Duracion 3-4 semanas"],
+        "publico_ideal": "Mujeres que quieren resaltar su mirada sin maquillarse a diario",
+        "frecuencia": "Relleno cada 2-3 semanas",
+        "categoria": "belleza",
+    },
+    "lifting de pestanas": {
+        "descripcion": "Curvado y tinte de pestanas naturales para un efecto de ojos abiertos",
+        "beneficios": ["Efecto natural", "Sin mantenimiento", "Ojos mas abiertos", "Dura 6-8 semanas"],
+        "publico_ideal": "Pestanas rectas o caidas, quien busca efecto natural",
+        "frecuencia": "Cada 6-8 semanas",
+        "categoria": "belleza",
+    },
+    "diseno de cejas": {
+        "descripcion": "Perfilado y tinte de cejas para enmarcar el rostro",
+        "beneficios": ["Enmarca el rostro", "Mirada definida", "Reduce maquillaje diario", "Simetria facial"],
+        "publico_ideal": "Cualquier persona que quiera cejas definidas y con forma",
+        "frecuencia": "Cada 3-4 semanas",
+        "categoria": "belleza",
+    },
+}
+
+# Funcion para buscar servicio por coincidencia parcial
+def buscar_servicio(nombre):
+    """Busca un servicio en la base de conocimiento por coincidencia parcial."""
+    nombre_lower = nombre.lower().strip()
+    # Busqueda exacta
+    if nombre_lower in SERVICIOS_ESTETICOS:
+        return SERVICIOS_ESTETICOS[nombre_lower]
+    # Busqueda parcial
+    for key, valor in SERVICIOS_ESTETICOS.items():
+        if nombre_lower in key or key in nombre_lower:
+            return valor
+    return None
+
+
 SYSTEM_PROMPT = """Eres el motor de contenido de Esteticai, un agente de inteligencia artificial \
 especializado en crear contenido de redes sociales para profesionales de la estetica \
 (clinicas de belleza, centros de estetica, esteticistas autonomas).
@@ -156,29 +365,104 @@ def generar_copy_individual(perfil, tipo_contenido, servicio_o_producto,
         return _generar_copy_demo(perfil, tipo_contenido, servicio_o_producto)
 
     client = Anthropic(api_key=key)
-    prompt = f"""Genera UN SOLO copy de tipo {tipo_contenido} para:
-NEGOCIO: {perfil['nombre_negocio']} ({perfil['tipo_negocio']})
-TONO: {perfil['tono']}
-SERVICIO/PRODUCTO: {servicio_o_producto}
+
+    # Construir contexto rico de marca
+    valores_str = ', '.join(perfil.get('valores', [])) or 'No especificados'
+    publico_str = perfil.get('publico', '') or 'Mujeres interesadas en estetica y cuidado personal'
+    redes_str = ', '.join(perfil.get('redes', ['Instagram']))
+    servicios_str = ', '.join(perfil.get('servicios', []))
+
+    # Obtener info del servicio si existe en la base de conocimiento
+    info_servicio = buscar_servicio(servicio_o_producto)
+    contexto_servicio = ""
+    if info_servicio:
+        contexto_servicio = f"""
+INFORMACION DEL SERVICIO (usa esto para hacer el copy mas tecnico y creible):
+- Descripcion: {info_servicio.get('descripcion', '')}
+- Beneficios clave: {', '.join(info_servicio.get('beneficios', []))}
+- Publico ideal: {info_servicio.get('publico_ideal', '')}
+- Frecuencia recomendada: {info_servicio.get('frecuencia', '')}
+"""
+
+    prompt = f"""Genera UN SOLO copy de tipo {tipo_contenido} para publicar en redes sociales.
+
+PERFIL COMPLETO DEL NEGOCIO:
+- Negocio: {perfil['nombre_negocio']} ({perfil['tipo_negocio']})
+- Propietaria: {perfil.get('propietaria', '')}
+- Ciudad: {perfil.get('ciudad', '')}
+- Tono de comunicacion: {perfil.get('tono', 'cercano')}
+- Valores de marca: {valores_str}
+- Publico objetivo: {publico_str}
+- Redes sociales activas: {redes_str}
+- Todos sus servicios: {servicios_str}
+- Instagram: {perfil.get('instagram_handle', '')}
+
+SERVICIO/PRODUCTO PARA ESTE COPY: {servicio_o_producto}
+{contexto_servicio}
+
+TIPO DE CONTENIDO: {tipo_contenido}
+
+REGLAS PARA ESTE COPY:
+1. El PRIMER RENGLON debe ser un gancho que detenga el scroll (pregunta, dato impactante, o frase que genere curiosidad)
+2. El copy debe sentirse escrito por la propietaria, NO por una IA. Usa su tono ({perfil.get('tono', 'cercano')}).
+3. Maximo 2200 caracteres (limite de Instagram). Ideal: 800-1200.
+4. Incluye saltos de linea para que sea facil de leer en el movil.
+5. Maximo 3-4 emojis, usados con gusto.
+6. Los hashtags deben ser: 3 de nicho especifico, 3 de alcance medio, 2 generales. Total 8 hashtags.
+7. El CTA debe ser natural, no agresivo. Ejemplo: "Escribe QUIERO por DM" mejor que "COMPRA YA".
+8. Incluye una nota practica para la clienta sobre que imagen o video acompanar.
 """
     if descripcion_foto:
-        prompt += f"\nFOTO/VIDEO: {descripcion_foto}\nAdapta el copy a lo que se ve.\n"
+        prompt += f"\nFOTO/VIDEO QUE ACOMPANA: {descripcion_foto}\nAdapta el copy a lo que se ve en la imagen/video.\n"
+
     prompt += """
-Responde en JSON: {"copy": "...", "hashtags": [...], "cta": "...",
-"formato_recomendado": "...", "hora_recomendada": "...", "nota_para_la_clienta": "..."}
-Solo JSON."""
+Responde SOLO con JSON valido (sin markdown, sin ```):
+{
+  "copy": "El texto completo listo para copiar y pegar",
+  "hashtags": ["#hashtag1", "#hashtag2", ...],
+  "cta": "La llamada a la accion",
+  "formato_recomendado": "reel|carrusel|foto|story",
+  "hora_recomendada": "19:00",
+  "red_social_ideal": "Instagram|TikTok|Facebook",
+  "nota_para_la_clienta": "Instruccion sobre que foto/video usar"
+}"""
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=1500,
+        model="claude-sonnet-4-20250514", max_tokens=2000,
         system=SYSTEM_PROMPT, messages=[{"role": "user", "content": prompt}],
     )
     texto = response.content[0].text.strip()
+    # Limpiar posibles wrappers markdown
     if texto.startswith("```"):
-        texto = texto.split("\n", 1)[1].rsplit("```", 1)[0]
+        texto = texto.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    # Intentar extraer JSON si hay texto extra
+    if not texto.startswith("{"):
+        inicio = texto.find("{")
+        if inicio != -1:
+            texto = texto[inicio:]
+    if not texto.endswith("}"):
+        fin = texto.rfind("}")
+        if fin != -1:
+            texto = texto[:fin + 1]
     try:
-        return json.loads(texto)
+        resultado = json.loads(texto)
+        # Validar campos minimos
+        if "copy" not in resultado or not resultado["copy"]:
+            return {"error": "El copy generado esta vacio"}
+        # Asegurar que hashtags es una lista
+        if isinstance(resultado.get("hashtags"), str):
+            resultado["hashtags"] = [h.strip() for h in resultado["hashtags"].split() if h.startswith("#")]
+        return resultado
     except json.JSONDecodeError:
-        return {"error": "No se pudo parsear", "respuesta_cruda": texto}
+        # Ultimo intento: buscar el JSON dentro del texto
+        import re
+        match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', texto, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                pass
+        return {"error": "No se pudo parsear la respuesta", "respuesta_cruda": texto[:500]}
 
 
 def _generar_demo(perfil):

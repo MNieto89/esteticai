@@ -55,11 +55,42 @@ async function generarCopy() {
         const data = await apiCall('/api/generar/copy', { tipo, servicio });
         if (data.ok) {
             const copy = data.copy;
-            resultDiv.innerHTML = `
-                <div>${copy.copy || ''}</div>
-                <div class="hashtags">${(copy.hashtags || []).join(' ')}</div>
-                <div class="cta">${copy.cta || ''}</div>
-            `;
+            if (copy.error) {
+                resultDiv.innerHTML = `<div>Error: ${copy.error}</div>`;
+                return;
+            }
+            let html = '';
+
+            // Copy principal (preservar saltos de linea)
+            const copyText = (copy.copy || '').replace(/\n/g, '<br>');
+            html += `<div class="copy-texto">${copyText}</div>`;
+
+            // Hashtags
+            if (copy.hashtags && copy.hashtags.length > 0) {
+                html += `<div class="copy-hashtags">${copy.hashtags.join(' ')}</div>`;
+            }
+
+            // Meta info
+            html += `<div class="copy-meta">`;
+            if (copy.formato_recomendado) html += `<span class="copy-tag">${copy.formato_recomendado}</span>`;
+            if (copy.red_social_ideal) html += `<span class="copy-tag">${copy.red_social_ideal}</span>`;
+            if (copy.hora_recomendada) html += `<span class="copy-tag">${copy.hora_recomendada}</span>`;
+            html += `</div>`;
+
+            // CTA
+            if (copy.cta) html += `<div class="copy-cta">${copy.cta}</div>`;
+
+            // Nota para la clienta
+            if (copy.nota_para_la_clienta) {
+                html += `<div class="copy-nota">${copy.nota_para_la_clienta}</div>`;
+            }
+
+            // Boton copiar
+            html += `<div class="copy-actions">`;
+            html += `<button class="btn btn-secondary" onclick="copiarTexto(this)" data-copy="${encodeURIComponent(copy.copy || '')}">Copiar copy</button>`;
+            html += `</div>`;
+
+            resultDiv.innerHTML = html;
         } else {
             resultDiv.innerHTML = `<div>Error: ${data.error}</div>`;
         }
@@ -197,23 +228,46 @@ async function generarCalendario() {
         if (data.ok && data.calendario) {
             const cal = data.calendario;
             let html = '';
-            if (cal.estrategia) {
-                html += `<div style="margin-bottom:16px;"><strong>Estrategia:</strong> ${cal.estrategia}</div>`;
+
+            // Estrategia semanal
+            const estrategia = cal.estrategia_semanal || cal.estrategia || '';
+            if (estrategia) {
+                html += `<div class="cal-estrategia"><strong>Estrategia de la semana:</strong> ${estrategia}</div>`;
             }
-            if (cal.publicaciones) {
-                cal.publicaciones.forEach(pub => {
-                    html += `<div style="border-top:1px solid #ddd; padding-top:12px; margin-top:12px;">`;
-                    html += `<strong>${pub.dia || ''} | ${pub.hora || ''} | ${pub.red_social || ''}</strong>`;
-                    html += `<div style="margin-top:4px;">${pub.copy || ''}</div>`;
+
+            // Publicaciones (soporta ambos formatos)
+            const pubs = cal.calendario_semanal || cal.publicaciones || [];
+            if (pubs.length > 0) {
+                pubs.forEach(pub => {
+                    const hora = pub.hora_publicacion || pub.hora || '';
+                    const red = pub.red_social || '';
+                    const tipo = pub.tipo_contenido || pub.tipo || '';
+                    const formato = pub.formato || '';
+
+                    html += `<div class="cal-dia">`;
+                    html += `<div class="cal-dia-header">`;
+                    html += `<strong>${pub.dia || ''}</strong>`;
+                    html += `<span class="cal-meta">${hora} · ${red} · ${formato}</span>`;
+                    html += `</div>`;
+                    if (tipo) html += `<span class="cal-tipo">${tipo}</span>`;
+                    html += `<div class="cal-copy">${pub.copy || ''}</div>`;
                     if (pub.hashtags) {
                         html += `<div class="hashtags">${Array.isArray(pub.hashtags) ? pub.hashtags.join(' ') : pub.hashtags}</div>`;
+                    }
+                    if (pub.cta) html += `<div class="cal-cta">${pub.cta}</div>`;
+                    if (pub.nota_para_la_clienta) {
+                        html += `<div class="cal-nota">${pub.nota_para_la_clienta}</div>`;
                     }
                     html += `</div>`;
                 });
             }
-            if (cal.consejo) {
-                html += `<div style="border-top:1px solid #ddd; padding-top:12px; margin-top:12px;"><strong>Consejo:</strong> ${cal.consejo}</div>`;
+
+            // Consejo de la semana
+            const consejo = cal.consejo_de_la_semana || cal.consejo || '';
+            if (consejo) {
+                html += `<div class="cal-consejo"><strong>Consejo de la semana:</strong> ${consejo}</div>`;
             }
+
             resultDiv.innerHTML = html || '<div>Calendario generado (revisa la consola para detalles)</div>';
         } else {
             resultDiv.innerHTML = `<div>Error: ${data.error || 'Error desconocido'}</div>`;
@@ -249,6 +303,23 @@ function previewFoto(input) {
 
 async function mejorarFoto() {
     if (!fotoSeleccionada) return;
+
+    // Validar archivo
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+    if (fotoSeleccionada.size > maxSize) {
+        const resultDiv = document.getElementById('result-foto');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div>La foto es demasiado grande. Maximo 10MB.</div>';
+        return;
+    }
+    if (!allowedTypes.includes(fotoSeleccionada.type)) {
+        const resultDiv = document.getElementById('result-foto');
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div>Formato no soportado. Usa JPG, PNG o WebP.</div>';
+        return;
+    }
 
     const tipoTratamiento = document.getElementById('foto-tipo-tratamiento').value;
     const tipoFondo = document.getElementById('foto-fondo').value;
@@ -334,4 +405,30 @@ function usarParaVideo(url) {
     document.getElementById('btn-video').disabled = false;
     document.getElementById('btn-video').textContent = 'Crear video';
     cardVideo.scrollIntoView({ behavior: 'smooth' });
+}
+
+
+function copiarTexto(btn) {
+    const texto = decodeURIComponent(btn.dataset.copy);
+    navigator.clipboard.writeText(texto).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Copiado!';
+        btn.style.background = '#27ae60';
+        btn.style.color = '#fff';
+        setTimeout(() => {
+            btn.textContent = original;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    }).catch(() => {
+        // Fallback para navegadores sin clipboard API
+        const ta = document.createElement('textarea');
+        ta.value = texto;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copiado!';
+        setTimeout(() => { btn.textContent = 'Copiar copy'; }, 2000);
+    });
 }

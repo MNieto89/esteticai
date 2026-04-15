@@ -28,33 +28,40 @@ except ImportError:
 FONDOS_PROFESIONALES = {
     "clinica_blanco": (
         "Clean white professional medical aesthetic clinic background, "
-        "soft diffused studio lighting, minimalist, high-end beauty clinic atmosphere, "
-        "subtle shadow on floor, pristine and clinical"
+        "soft diffused overhead studio lighting, minimalist high-end beauty clinic, "
+        "subtle shadow on pristine white floor, clinical yet welcoming, "
+        "out-of-focus treatment bed or equipment in background, photorealistic"
     ),
     "spa_elegante": (
-        "Elegant luxury spa background, warm soft lighting, "
-        "light beige and cream tones, subtle marble texture, "
-        "orchid flowers in soft focus, serene and premium atmosphere"
+        "Elegant luxury spa treatment room background, warm ambient lighting, "
+        "light beige and cream marble surfaces, fresh white orchid arrangement "
+        "in soft focus, folded luxury towels, serene and premium atmosphere, "
+        "candle glow, photorealistic interior design"
     ),
     "neutro_gris": (
-        "Professional portrait photography studio background, "
-        "smooth neutral gray gradient, soft even lighting, "
-        "clean and modern, no distractions"
+        "Professional beauty portrait photography studio, "
+        "smooth neutral gray seamless paper backdrop, "
+        "Rembrandt-style soft even key lighting with fill, "
+        "clean modern commercial look, no distractions, photorealistic"
     ),
     "rosa_suave": (
-        "Soft pink and blush gradient background, gentle studio lighting, "
-        "feminine and elegant, beauty brand aesthetic, "
-        "subtle bokeh lights, warm and inviting"
+        "Soft dusty pink and blush gradient studio background, "
+        "gentle diffused studio lighting, feminine beauty brand editorial, "
+        "subtle golden bokeh highlights, warm skin-flattering tones, "
+        "Instagram-ready aesthetic, photorealistic"
     ),
     "naturaleza_zen": (
-        "Serene nature spa background, soft green bamboo and smooth stones, "
-        "warm natural light filtering through, zen garden atmosphere, "
-        "peaceful and relaxing, slightly blurred"
+        "Serene zen garden spa setting, soft green bamboo and smooth river stones, "
+        "warm golden-hour natural light filtering through sheer curtains, "
+        "small water feature in background, eucalyptus leaves, "
+        "peaceful holistic wellness atmosphere, slightly blurred depth, photorealistic"
     ),
     "dorado_lujo": (
-        "Premium golden champagne gradient background, "
-        "warm elegant lighting, subtle shimmer, "
-        "luxury beauty brand aesthetic, sophisticated and exclusive"
+        "Premium golden champagne gradient backdrop, "
+        "warm elegant side lighting with soft shimmer, "
+        "luxury beauty brand editorial aesthetic, "
+        "subtle metallic texture, sophisticated exclusive feeling, "
+        "high-fashion beauty commercial, photorealistic"
     ),
 }
 
@@ -66,6 +73,11 @@ FONDO_RECOMENDADO = {
     "spa": "spa_elegante",
     "producto": "rosa_suave",
     "antes_despues": "neutro_gris",
+    "unas": "rosa_suave",
+    "belleza": "rosa_suave",
+    "masaje": "spa_elegante",
+    "relajacion": "naturaleza_zen",
+    "premium": "dorado_lujo",
     "default": "clinica_blanco",
 }
 
