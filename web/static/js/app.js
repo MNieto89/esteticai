@@ -9,8 +9,10 @@ document.querySelectorAll('.gen-card').forEach(card => {
     card.addEventListener('click', function(e) {
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' ||
             e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
-            e.target.tagName === 'LABEL' || e.target.closest('.upload-area') ||
-            e.target.closest('.foto-opciones')) return;
+            e.target.tagName === 'LABEL' || e.target.tagName === 'IMG' ||
+            e.target.closest('.upload-area') || e.target.closest('.foto-opciones') ||
+            e.target.closest('.foto-comparacion') || e.target.closest('.foto-actions') ||
+            e.target.closest('.gen-result')) return;
         const form = this.querySelector('.gen-form');
         if (form) {
             const isVisible = form.style.display !== 'none';

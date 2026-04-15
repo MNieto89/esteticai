@@ -104,15 +104,15 @@
             <h3>Mejorar Foto Real</h3>
             <p>Sube tu foto de tratamiento y la convertimos en publicacion profesional</p>
             <div class="gen-form" id="form-foto" style="display:none;">
-                <label class="upload-area" id="upload-area">
-                    <input type="file" id="foto-input" accept="image/*" style="display:none;" onchange="previewFoto(this)">
+                <input type="file" id="foto-input" accept="image/*" style="position:absolute;width:0;height:0;overflow:hidden;" onchange="previewFoto(this)">
+                <div class="upload-area" id="upload-area" onclick="document.getElementById('foto-input').click()">
                     <div id="upload-placeholder">
                         <span class="upload-icon">&#128247;</span>
                         <span>Pulsa para subir tu foto</span>
                         <span class="upload-hint">JPG o PNG, max 10MB</span>
                     </div>
                     <img id="foto-preview" style="display:none; max-width:100%; border-radius:8px;">
-                </label>
+                </div>
                 <select id="foto-tipo-tratamiento">
                     <option value="corporal">Corporal (reductor, reafirmante...)</option>
                     <option value="facial">Facial (limpieza, peeling...)</option>
