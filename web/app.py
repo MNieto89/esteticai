@@ -13,7 +13,7 @@ import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from fastapi import FastAPI, Request, HTTPException, Depends, Form
+from fastapi import FastAPI, Request, HTTPException, Depends, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.content_engine import generar_contenido_semanal, generar_copy_individual
 from agents.image_engine import generar_imagen_automatica, generar_prompt_automatico, ESTILOS_PUBLICACION
 from agents.video_engine import generar_video_desde_imagen, MOVIMIENTOS_VIDEO, MOVIMIENTO_RECOMENDADO
+from agents.photo_engine import procesar_foto_tratamiento, subir_imagen_a_fal, FONDOS_PROFESIONALES, obtener_fondos_disponibles
 
 import sqlite3
 
@@ -429,6 +430,71 @@ async def api_generar_calendario(request: Request):
         return JSONResponse({"ok": True, "calendario": cal})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ============================================================
+# API - MEJORAR FOTO REAL
+# ============================================================
+
+@app.post("/api/mejorar-foto")
+async def api_mejorar_foto(
+    request: Request,
+    foto: UploadFile = File(...),
+    tipo_fondo: str = Form("clinica_blanco"),
+    tipo_tratamiento: str = Form("default"),
+    eliminar_fondo: str = Form("true"),
+    mejorar_calidad: str = Form("true"),
+):
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+    perfil = get_perfil_activo(user["id"])
+    if not perfil:
+        return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
+
+    # Leer la foto subida
+    contenido = await foto.read()
+    if len(contenido) > 10 * 1024 * 1024:  # max 10MB
+        return JSONResponse({"error": "La foto es demasiado grande (max 10MB)"}, status_code=400)
+
+    try:
+        # Subir a fal.ai storage
+        image_url = subir_imagen_a_fal(contenido, filename=foto.filename or "foto.jpg")
+        if not image_url:
+            return JSONResponse({"error": "No se pudo subir la imagen"}, status_code=500)
+
+        # Procesar con pipeline
+        opciones = {
+            "eliminar_fondo": eliminar_fondo.lower() == "true",
+            "mejorar_calidad": mejorar_calidad.lower() == "true",
+            "tipo_fondo": tipo_fondo,
+            "tipo_tratamiento": tipo_tratamiento,
+        }
+        resultado = procesar_foto_tratamiento(
+            image_url=image_url,
+            opciones=opciones,
+        )
+
+        # Guardar en historial
+        guardar_generacion(
+            user["id"], perfil["id"], "foto_mejorada",
+            imagen_url=resultado.get("url_final"),
+            metadata={
+                "original_url": resultado.get("original_url"),
+                "pasos": resultado.get("pasos_completados", []),
+                "tipo_fondo": tipo_fondo,
+                "tipo_tratamiento": tipo_tratamiento,
+            },
+        )
+        return JSONResponse({"ok": True, "resultado": resultado})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/fondos-disponibles")
+async def api_fondos_disponibles():
+    """Devuelve la lista de fondos profesionales disponibles."""
+    return JSONResponse({"fondos": obtener_fondos_disponibles()})
 
 
 # ============================================================

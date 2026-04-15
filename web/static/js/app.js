@@ -8,7 +8,9 @@ let ultimaImagenUrl = null;
 document.querySelectorAll('.gen-card').forEach(card => {
     card.addEventListener('click', function(e) {
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' ||
-            e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
+            e.target.tagName === 'LABEL' || e.target.closest('.upload-area') ||
+            e.target.closest('.foto-opciones')) return;
         const form = this.querySelector('.gen-form');
         if (form) {
             const isVisible = form.style.display !== 'none';
@@ -217,4 +219,117 @@ async function generarCalendario() {
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
     }
+}
+
+
+// ============================================================
+// MEJORAR FOTO REAL
+// ============================================================
+
+let fotoSeleccionada = null;
+
+function previewFoto(input) {
+    if (input.files && input.files[0]) {
+        fotoSeleccionada = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('foto-preview');
+            const placeholder = document.getElementById('upload-placeholder');
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            document.getElementById('btn-foto').disabled = false;
+            document.getElementById('btn-foto').textContent = 'Mejorar foto';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function mejorarFoto() {
+    if (!fotoSeleccionada) return;
+
+    const tipoTratamiento = document.getElementById('foto-tipo-tratamiento').value;
+    const tipoFondo = document.getElementById('foto-fondo').value;
+    const quitarFondo = document.getElementById('foto-quitar-fondo').checked;
+    const mejorarCalidad = document.getElementById('foto-mejorar').checked;
+    const resultDiv = document.getElementById('result-foto');
+    const btn = document.getElementById('btn-foto');
+
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="loading">Procesando foto (30-60 segundos)</div>';
+    btn.disabled = true;
+    btn.textContent = 'Procesando...';
+
+    const formData = new FormData();
+    formData.append('foto', fotoSeleccionada);
+    formData.append('tipo_tratamiento', tipoTratamiento);
+    formData.append('tipo_fondo', tipoFondo);
+    formData.append('eliminar_fondo', quitarFondo.toString());
+    formData.append('mejorar_calidad', mejorarCalidad.toString());
+
+    try {
+        const res = await fetch('/api/mejorar-foto', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await res.json();
+
+        if (data.ok && data.resultado) {
+            const r = data.resultado;
+            let html = '';
+
+            if (r.url_final && r.url_final.startsWith('http')) {
+                html += `<div class="foto-comparacion">`;
+                html += `<div class="foto-antes">`;
+                html += `<span class="foto-label">Original</span>`;
+                html += `<img src="${r.original_url}" alt="Original">`;
+                html += `</div>`;
+                html += `<div class="foto-despues">`;
+                html += `<span class="foto-label">Mejorada</span>`;
+                html += `<img src="${r.url_final}" alt="Mejorada">`;
+                html += `</div>`;
+                html += `</div>`;
+
+                html += `<div class="foto-info"><span>${r.total_pasos} mejoras aplicadas</span></div>`;
+
+                html += `<div class="foto-actions">`;
+                html += `<a href="${r.url_final}" download class="btn btn-primary" target="_blank">Descargar imagen</a>`;
+                html += `<button class="btn btn-secondary" onclick="usarParaVideo('${r.url_final}')">Crear video con esta foto</button>`;
+                html += `</div>`;
+
+                ultimaImagenUrl = r.url_final;
+                document.getElementById('video-url').value = r.url_final;
+                document.getElementById('btn-video').disabled = false;
+                document.getElementById('btn-video').textContent = 'Crear video';
+            } else {
+                html = '<div>Foto procesada en modo demo (configura FAL_KEY para resultados reales)</div>';
+            }
+
+            if (r.errores && r.errores.length > 0) {
+                html += `<div class="foto-errores">Avisos: ${r.errores.join(', ')}</div>`;
+            }
+
+            resultDiv.innerHTML = html;
+        } else {
+            resultDiv.innerHTML = `<div>Error: ${data.error || 'Error desconocido'}</div>`;
+        }
+    } catch (e) {
+        resultDiv.innerHTML = `<div>Error de conexion: ${e.message}</div>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Mejorar otra foto';
+}
+
+function usarParaVideo(url) {
+    const cardVideo = document.getElementById('card-video');
+    const formVideo = document.getElementById('form-video');
+    document.querySelectorAll('.gen-form').forEach(f => f.style.display = 'none');
+    document.querySelectorAll('.gen-card').forEach(c => c.classList.remove('active'));
+    formVideo.style.display = 'flex';
+    cardVideo.classList.add('active');
+    document.getElementById('video-url').value = url;
+    document.getElementById('btn-video').disabled = false;
+    document.getElementById('btn-video').textContent = 'Crear video';
+    cardVideo.scrollIntoView({ behavior: 'smooth' });
 }

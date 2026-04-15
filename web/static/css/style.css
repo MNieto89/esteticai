@@ -453,6 +453,73 @@ body {
     border-top: 1px solid #eee;
 }
 
+/* Upload area */
+.upload-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    padding: 24px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    min-height: 120px;
+    text-align: center;
+}
+.upload-area:hover { border-color: var(--rosa); background: #fef7f9; }
+.upload-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.upload-hint { font-size: 12px; color: var(--gris); margin-top: 4px; }
+#upload-placeholder { display: flex; flex-direction: column; align-items: center; }
+
+/* Foto comparison */
+.foto-comparacion {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.foto-antes, .foto-despues { position: relative; }
+.foto-antes img, .foto-despues img {
+    width: 100%;
+    border-radius: 8px;
+    display: block;
+}
+.foto-label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+.foto-info {
+    text-align: center;
+    color: var(--gris);
+    font-size: 13px;
+    margin: 8px 0;
+}
+.foto-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 12px;
+}
+.foto-errores {
+    color: #c0392b;
+    font-size: 12px;
+    margin-top: 8px;
+    text-align: center;
+}
+.foto-opciones {
+    display: flex;
+    gap: 16px;
+    margin: 8px 0;
+}
+
 /* Form sections */
 .form-section {
     margin-bottom: 28px;

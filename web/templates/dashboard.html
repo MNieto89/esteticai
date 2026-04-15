@@ -98,6 +98,49 @@
             <div class="gen-result" id="result-video" style="display:none;"></div>
         </div>
 
+        <!-- MEJORAR FOTO -->
+        <div class="gen-card" id="card-foto">
+            <div class="gen-icon">&#10024;</div>
+            <h3>Mejorar Foto Real</h3>
+            <p>Sube tu foto de tratamiento y la convertimos en publicacion profesional</p>
+            <div class="gen-form" id="form-foto" style="display:none;">
+                <label class="upload-area" id="upload-area">
+                    <input type="file" id="foto-input" accept="image/*" style="display:none;" onchange="previewFoto(this)">
+                    <div id="upload-placeholder">
+                        <span class="upload-icon">&#128247;</span>
+                        <span>Pulsa para subir tu foto</span>
+                        <span class="upload-hint">JPG o PNG, max 10MB</span>
+                    </div>
+                    <img id="foto-preview" style="display:none; max-width:100%; border-radius:8px;">
+                </label>
+                <select id="foto-tipo-tratamiento">
+                    <option value="corporal">Corporal (reductor, reafirmante...)</option>
+                    <option value="facial">Facial (limpieza, peeling...)</option>
+                    <option value="laser">Laser / aparatologia</option>
+                    <option value="spa">Spa / relajacion</option>
+                    <option value="antes_despues">Antes y despues</option>
+                </select>
+                <select id="foto-fondo">
+                    <option value="clinica_blanco">Clinica profesional (blanco)</option>
+                    <option value="neutro_gris">Estudio neutro (gris)</option>
+                    <option value="spa_elegante">Spa elegante (beige)</option>
+                    <option value="rosa_suave">Rosa suave (femenino)</option>
+                    <option value="naturaleza_zen">Naturaleza zen</option>
+                    <option value="dorado_lujo">Dorado lujo</option>
+                </select>
+                <div class="foto-opciones">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="foto-quitar-fondo" checked> Cambiar fondo
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="foto-mejorar" checked> Mejorar calidad
+                    </label>
+                </div>
+                <button class="btn btn-primary" onclick="mejorarFoto()" id="btn-foto" disabled>Sube una foto primero</button>
+            </div>
+            <div class="gen-result" id="result-foto" style="display:none;"></div>
+        </div>
+
         <!-- CALENDARIO -->
         <div class="gen-card" id="card-calendario">
             <div class="gen-icon">&#128197;</div>
