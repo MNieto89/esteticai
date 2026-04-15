@@ -34,9 +34,9 @@ import sqlite3
 # ============================================================
 
 BASE_DIR = Path(__file__).parent
-# En produccion, usar /tmp para la DB (filesystem escribible en Railway)
+# En produccion, usar volumen persistente /data para la DB
 if os.environ.get("RAILWAY_ENVIRONMENT"):
-    DB_PATH = Path("/tmp/esteticai.db")
+    DB_PATH = Path("/data/esteticai.db")
 else:
     DB_PATH = BASE_DIR / "esteticai.db"
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
