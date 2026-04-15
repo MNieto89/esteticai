@@ -1,11 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Esteticai - IA para profesionales de la estetica{% endblock %}
+{% block title %}Esteticai - IA para profesionales de la est&eacute;tica{% endblock %}
+{% block nav %}
+<nav class="navbar navbar-home">
+    <div class="nav-brand">Esteticai</div>
+    <div class="nav-actions">
+        <a href="/login" class="nav-link">Iniciar sesi&oacute;n</a>
+        <a href="/registro" class="btn btn-primary btn-sm">Empezar gratis</a>
+    </div>
+</nav>
+{% endblock %}
 {% block content %}
 <div class="hero">
     <div class="hero-content">
         <h1>Esteticai</h1>
         <p class="hero-sub">Tu agente de IA para crear contenido de redes sociales profesional en segundos</p>
-        <p class="hero-desc">Genera copies, imagenes y videos para Instagram y TikTok adaptados a tu negocio de estetica. Solo elige tu servicio y el tipo de post. La IA hace el resto.</p>
+        <p class="hero-desc">Genera copies, im&aacute;genes y videos para Instagram y TikTok adaptados a tu negocio de est&eacute;tica. Solo elige tu servicio y el tipo de post. La IA hace el resto.</p>
         <div class="hero-buttons">
             <a href="/registro" class="btn btn-primary">Empezar gratis</a>
             <a href="/login" class="btn btn-secondary">Ya tengo cuenta</a>
@@ -24,6 +33,10 @@
                 <span>Videos para Reels y TikTok</span>
             </div>
             <div class="feature">
+                <span class="feature-icon">&#128260;</span>
+                <span>Composiciones Antes y Despu&eacute;s</span>
+            </div>
+            <div class="feature">
                 <span class="feature-icon">&#128197;</span>
                 <span>Calendario semanal completo</span>
             </div>
@@ -33,16 +46,16 @@
 
 <div class="landing-section">
     <div class="landing-content">
-        <h2>Como funciona</h2>
+        <h2>C&oacute;mo funciona</h2>
         <div class="steps">
             <div class="step">
                 <div class="step-num">1</div>
                 <h3>Crea tu perfil</h3>
-                <p>Registrate y configura tu negocio: servicios, productos, tono de voz y redes sociales.</p>
+                <p>Reg&iacute;strate y configura tu negocio: servicios, productos, tono de voz y redes sociales.</p>
             </div>
             <div class="step">
                 <div class="step-num">2</div>
-                <h3>Elige que crear</h3>
+                <h3>Elige qu&eacute; crear</h3>
                 <p>Selecciona: copy, imagen, video o calendario semanal. Elige el servicio y el tipo de post.</p>
             </div>
             <div class="step">
@@ -56,11 +69,11 @@
 
 <div class="landing-section landing-dark">
     <div class="landing-content">
-        <h2>Para quien es Esteticai</h2>
+        <h2>Para qui&eacute;n es Esteticai</h2>
         <div class="audience-grid">
             <div class="audience-card">
-                <h3>Esteticistas y clinicas</h3>
-                <p>Contenido profesional sin dedicar horas al marketing. Tu especialidad es la estetica, la nuestra es el contenido.</p>
+                <h3>Esteticistas y cl&iacute;nicas</h3>
+                <p>Contenido profesional sin dedicar horas al marketing. Tu especialidad es la est&eacute;tica, la nuestra es el contenido.</p>
             </div>
             <div class="audience-card">
                 <h3>Distribuidoras de marcas</h3>
@@ -68,7 +81,7 @@
             </div>
             <div class="audience-card">
                 <h3>Centros de belleza</h3>
-                <p>Calendario semanal automatico con estrategia: educa, inspira, vende y conecta con tus seguidoras.</p>
+                <p>Calendario semanal autom&aacute;tico con estrategia: educa, inspira, vende y conecta con tus seguidoras.</p>
             </div>
         </div>
     </div>
@@ -76,13 +89,13 @@
 
 <div class="landing-section">
     <div class="landing-content landing-cta">
-        <h2>Pruebalo ahora</h2>
-        <p>Registrate gratis y genera tu primer contenido en menos de 2 minutos.</p>
+        <h2>Pru&eacute;balo ahora</h2>
+        <p>Reg&iacute;strate gratis y genera tu primer contenido en menos de 2 minutos.</p>
         <a href="/registro" class="btn btn-primary btn-lg">Crear cuenta gratis</a>
     </div>
 </div>
 
 <footer class="landing-footer">
-    <p>Esteticai 2026 - IA especializada en estetica y belleza</p>
+    <p>&copy; Esteticai 2026 - IA especializada en est&eacute;tica y belleza</p>
 </footer>
 {% endblock %}

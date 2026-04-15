@@ -50,7 +50,7 @@ async function generarCopy() {
     const resultDiv = document.getElementById('result-copy');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando copy</div>';
+    resultDiv.innerHTML = '<div class="loading">Generando copy profesional para tu negocio...</div>';
 
     try {
         const data = await apiCall('/api/generar/copy', { tipo, servicio });
@@ -111,7 +111,7 @@ async function generarImagen() {
     const resultDiv = document.getElementById('result-imagen');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando imagen (10-20 segundos)</div>';
+    resultDiv.innerHTML = '<div class="loading">Generando imagen profesional con IA...</div>';
 
     try {
         const data = await apiCall('/api/generar/imagen', {
@@ -119,25 +119,34 @@ async function generarImagen() {
         });
         if (data.ok && data.imagen) {
             const img = data.imagen;
-            if (img.url && img.url.startsWith('http')) {
-                ultimaImagenUrl = img.url;
-                resultDiv.innerHTML = `
-                    <img src="${img.url}" alt="Imagen generada">
-                    <div style="margin-top:12px;">
+            const tieneUrl = img.url && (img.url.startsWith('http') || img.url.startsWith('data:'));
+            if (tieneUrl) {
+                let html = `<img src="${img.url}" alt="Imagen generada">`;
+
+                if (img.es_demo) {
+                    html += `<div class="demo-aviso">
+                        <strong>Vista previa</strong> &mdash; Esta es una imagen de ejemplo.
+                        Con la API de fal.ai conectada, se generar&aacute; una imagen real con IA.
+                    </div>`;
+                } else {
+                    ultimaImagenUrl = img.url;
+                    html += `<div style="margin-top:12px;">
                         <button class="btn btn-primary" onclick="prepararVideo()">
                             Convertir en video para Reels
                         </button>
-                    </div>
-                `;
-                // Habilitar boton de video
-                document.getElementById('video-url').value = img.url;
-                document.getElementById('btn-video').disabled = false;
-                document.getElementById('btn-video').textContent = 'Crear video';
+                    </div>`;
+                    document.getElementById('video-url').value = img.url;
+                    document.getElementById('btn-video').disabled = false;
+                    document.getElementById('btn-video').textContent = 'Crear video';
+                }
+                resultDiv.innerHTML = html;
             } else {
-                resultDiv.innerHTML = `<div>${img.url || 'Imagen generada en modo demo'}</div>`;
+                resultDiv.innerHTML = `<div class="demo-aviso">
+                    <strong>Modo demo</strong> &mdash; La generaci&oacute;n de im&aacute;genes requiere una API key de fal.ai.
+                </div>`;
             }
         } else {
-            resultDiv.innerHTML = `<div>Error: ${data.error || 'Error desconocido'}</div>`;
+            resultDiv.innerHTML = `<div class="error-msg">No se pudo generar la imagen. ${data.error || ''}</div>`;
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
@@ -178,7 +187,7 @@ async function generarVideo() {
     }
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando video (1-3 minutos, paciencia)</div>';
+    resultDiv.innerHTML = '<div class="loading">Creando video para Reels (1-3 minutos)...</div>';
 
     try {
         const data = await apiCall('/api/generar/video', {
@@ -188,9 +197,13 @@ async function generarVideo() {
         });
         if (data.ok && data.video) {
             const video = data.video;
-            if (video.url && video.url.startsWith('http')) {
+            if (video.es_demo) {
+                resultDiv.innerHTML = `<div class="demo-aviso">
+                    <strong>Modo demo</strong> &mdash; ${video.nota || 'La generaci&oacute;n de video requiere una API key de fal.ai con saldo.'}
+                </div>`;
+            } else if (video.url && video.url.startsWith('http')) {
                 resultDiv.innerHTML = `
-                    <video controls autoplay muted loop>
+                    <video controls autoplay muted loop style="max-width:100%;border-radius:8px;">
                         <source src="${video.url}" type="video/mp4">
                     </video>
                     <div style="margin-top:8px;">
@@ -200,10 +213,12 @@ async function generarVideo() {
                     </div>
                 `;
             } else {
-                resultDiv.innerHTML = `<div>${video.url || 'Video generado en modo demo'}</div>`;
+                resultDiv.innerHTML = `<div class="demo-aviso">
+                    <strong>Modo demo</strong> &mdash; No se pudo generar el video. Verifica tu API key de fal.ai.
+                </div>`;
             }
         } else {
-            resultDiv.innerHTML = `<div>Error: ${data.error || 'Error desconocido'}</div>`;
+            resultDiv.innerHTML = `<div class="error-msg">No se pudo generar el video. ${data.error || ''}</div>`;
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
@@ -220,7 +235,7 @@ async function generarCalendario() {
     const resultDiv = document.getElementById('result-calendario');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando calendario semanal (15-30 segundos)</div>';
+    resultDiv.innerHTML = '<div class="loading">Generando calendario semanal con estrategia...</div>';
 
     try {
         const data = await apiCall('/api/generar/calendario', {
@@ -330,7 +345,7 @@ async function mejorarFoto() {
     const btn = document.getElementById('btn-foto');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Procesando foto (30-60 segundos)</div>';
+    resultDiv.innerHTML = '<div class="loading">Mejorando tu foto profesionalmente...</div>';
     btn.disabled = true;
     btn.textContent = 'Procesando...';
 
@@ -469,7 +484,7 @@ async function componerAntesDespues() {
     const btn = document.getElementById('btn-ad');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Creando composicion...</div>';
+    resultDiv.innerHTML = '<div class="loading">Creando composici&oacute;n antes/despu&eacute;s...</div>';
     btn.disabled = true;
     btn.textContent = 'Creando...';
 

@@ -362,6 +362,23 @@ def generar_imagen_automatica(servicio, tipo_publicacion, perfil, modo="servicio
     print(f"\n[Esteticai] Generacion automatica")
     print(f"[Esteticai] Servicio: {servicio}")
     print(f"[Esteticai] Tipo: {tipo_publicacion} | Modo: {modo}")
+
+    key = os.environ.get("FAL_KEY")
+    if not key or not FAL_DISPONIBLE:
+        # Generar placeholder visual en vez de error
+        placeholder_url = _generar_placeholder(servicio, datos["tamano"])
+        return {
+            "url": placeholder_url or "",
+            "prompt": datos["prompt"],
+            "tamano": datos["tamano"],
+            "modelo": "demo",
+            "es_demo": True,
+            "servicio": servicio,
+            "tipo_publicacion": tipo_publicacion,
+            "modo": modo,
+            "nota": "Vista previa. Conecta fal.ai para imagenes reales.",
+        }
+
     resultado = generar_imagen(
         prompt_personalizado=datos["prompt"],
         tamano=datos["tamano"],
@@ -473,6 +490,84 @@ def quitar_fondo(ruta_imagen, api_key=None):
 # MODO DEMO
 # ============================================================
 
+def _generar_placeholder(servicio="Tratamiento", tipo_pub="post_feed"):
+    """Genera una imagen placeholder profesional con Pillow cuando no hay API."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import io, base64
+
+        # Tamanos segun tipo
+        tamanos = {
+            "post_feed": (1080, 1080), "square": (1080, 1080),
+            "story": (1080, 1920), "reel_portada": (1080, 1920),
+            "vertical": (1080, 1440), "carrusel": (1080, 1080),
+            "antes_despues": (1080, 1080), "producto": (1080, 1080),
+        }
+        ancho, alto = tamanos.get(tipo_pub, (1080, 1080))
+
+        # Crear imagen con gradiente rosa suave
+        img = Image.new("RGB", (ancho, alto), (253, 241, 243))
+        draw = ImageDraw.Draw(img)
+
+        # Gradiente diagonal
+        for y in range(alto):
+            r = int(253 - (y / alto) * 30)
+            g = int(241 - (y / alto) * 40)
+            b = int(243 - (y / alto) * 20)
+            draw.line([(0, y), (ancho, y)], fill=(r, g, b))
+
+        # Icono central
+        try:
+            fuente_grande = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
+            fuente_med = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)
+            fuente_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+        except (OSError, IOError):
+            fuente_grande = ImageFont.load_default()
+            fuente_med = fuente_grande
+            fuente_small = fuente_grande
+
+        # Circulo decorativo central
+        cx, cy = ancho // 2, alto // 2 - 40
+        radio = 80
+        draw.ellipse([(cx - radio, cy - radio), (cx + radio, cy + radio)],
+                     fill=(199, 121, 135), outline=(180, 100, 120), width=3)
+
+        # Icono de camara
+        icon_text = "AI"
+        bbox = draw.textbbox((0, 0), icon_text, font=fuente_grande)
+        tw = bbox[2] - bbox[0]
+        th = bbox[3] - bbox[1]
+        draw.text((cx - tw // 2, cy - th // 2), icon_text, font=fuente_grande, fill=(255, 255, 255))
+
+        # Texto del servicio
+        texto = servicio[:40] if len(servicio) > 40 else servicio
+        bbox = draw.textbbox((0, 0), texto, font=fuente_med)
+        tw = bbox[2] - bbox[0]
+        draw.text((cx - tw // 2, cy + radio + 30), texto, font=fuente_med, fill=(199, 121, 135))
+
+        # Texto demo
+        demo_text = "Vista previa - Imagen generada con IA"
+        bbox = draw.textbbox((0, 0), demo_text, font=fuente_small)
+        tw = bbox[2] - bbox[0]
+        draw.text((cx - tw // 2, cy + radio + 75), demo_text, font=fuente_small, fill=(180, 160, 170))
+
+        # Marca
+        marca = "Esteticai"
+        bbox = draw.textbbox((0, 0), marca, font=fuente_med)
+        tw = bbox[2] - bbox[0]
+        draw.text((cx - tw // 2, alto - 60), marca, font=fuente_med, fill=(199, 121, 135, 120))
+
+        # Convertir a base64 data URL
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=85)
+        buffer.seek(0)
+        b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{b64}"
+    except Exception as e:
+        print(f"[WARN] No se pudo generar placeholder: {e}")
+        return None
+
+
 def _demo_imagen(tipo_preset, variables, prompt_override=None):
     if prompt_override:
         prompt = prompt_override
@@ -482,12 +577,18 @@ def _demo_imagen(tipo_preset, variables, prompt_override=None):
             prompt = prompt.format(**variables)
         except KeyError:
             pass
+
+    # Extraer servicio del prompt para el placeholder
+    servicio = variables.get("tratamiento", variables.get("producto", "Tratamiento"))
+    placeholder_url = _generar_placeholder(servicio, "post_feed")
+
     return {
-        "url": "[DEMO] Imagen no generada - necesitas FAL_KEY",
+        "url": placeholder_url or "",
         "prompt": prompt,
         "tamano": "square",
         "modelo": "demo",
-        "nota": "Para generar imagenes reales: export FAL_KEY=tu-clave (de fal.ai/dashboard/keys)"
+        "es_demo": True,
+        "nota": "Esta es una vista previa. Conecta tu API key de fal.ai para generar imagenes reales con IA."
     }
 
 def _demo_fondo(ruta_imagen):

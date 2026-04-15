@@ -246,12 +246,13 @@ def descargar_video(url, nombre_archivo=None, carpeta="output"):
 def _demo_video(url_imagen, tipo_movimiento):
     mov = MOVIMIENTOS_VIDEO.get(tipo_movimiento, MOVIMIENTOS_VIDEO["zoom_suave"])
     return {
-        "url": "[DEMO] Video no generado - necesitas FAL_KEY con saldo",
+        "url": "",
         "prompt_movimiento": mov["prompt"],
         "duracion": 5,
         "imagen_origen": url_imagen,
         "modelo": "demo",
-        "nota": "Para generar videos reales necesitas saldo en fal.ai"
+        "es_demo": True,
+        "nota": "La generaci\u00f3n de video requiere una API key de fal.ai con saldo. Conecta tu cuenta para crear videos reales."
     }
 
 

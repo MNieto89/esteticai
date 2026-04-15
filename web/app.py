@@ -207,7 +207,7 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
     db.close()
     if not user or user["password_hash"] != hash_password(password):
         return templates.TemplateResponse(request, "login.html", context={
-            "error": "Email o contrasena incorrectos"
+            "error": "Email o contrase\u00f1a incorrectos"
         })
     request.session["user_id"] = user["id"]
     return RedirectResponse("/dashboard", status_code=303)
@@ -226,7 +226,7 @@ async def registro_submit(request: Request, nombre: str = Form(...),
     if existe:
         db.close()
         return templates.TemplateResponse(request, "registro.html", context={
-            "error": "Este email ya esta registrado"
+            "error": "Este email ya est\u00e1 registrado"
         })
     db.execute(
         "INSERT INTO usuarios (email, password_hash, nombre) VALUES (?, ?, ?)",
@@ -348,7 +348,13 @@ async def api_generar_copy(request: Request):
                           contenido=json.dumps(copy, ensure_ascii=False))
         return JSONResponse({"ok": True, "copy": copy})
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        error_msg = str(e)
+        if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
+            return JSONResponse({"error": "API key no configurada. Contacta al administrador."}, status_code=500)
+        if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+            return JSONResponse({"error": "La generaci\u00f3n tard\u00f3 demasiado. Int\u00e9ntalo de nuevo."}, status_code=500)
+        print(f"[ERROR] Copy: {error_msg}")
+        return JSONResponse({"error": "No se pudo generar el copy. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
 @app.post("/api/generar/imagen")
@@ -374,11 +380,12 @@ async def api_generar_imagen(request: Request):
         )
         if "error" not in resultado:
             guardar_generacion(user["id"], perfil["id"], "imagen",
-                              imagen_url=resultado.get("url"),
-                              metadata={"servicio": servicio, "tipo": tipo_pub})
+                              imagen_url=resultado.get("url") if not resultado.get("es_demo") else None,
+                              metadata={"servicio": servicio, "tipo": tipo_pub, "es_demo": resultado.get("es_demo", False)})
         return JSONResponse({"ok": True, "imagen": resultado})
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"[ERROR] Imagen: {e}")
+        return JSONResponse({"error": "No se pudo generar la imagen. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
 @app.post("/api/generar/video")
@@ -402,14 +409,18 @@ async def api_generar_video(request: Request):
             duracion=duracion,
         )
         perfil = get_perfil_activo(user["id"])
-        if "error" not in resultado:
+        if "error" not in resultado and not resultado.get("es_demo"):
             guardar_generacion(user["id"], perfil["id"] if perfil else None, "video",
                               imagen_url=url_imagen,
                               video_url=resultado.get("url"),
                               metadata={"movimiento": tipo_movimiento, "duracion": duracion})
         return JSONResponse({"ok": True, "video": resultado})
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        error_msg = str(e)
+        print(f"[ERROR] Video: {error_msg}")
+        if "timeout" in error_msg.lower():
+            return JSONResponse({"error": "La generaci\u00f3n de video tard\u00f3 demasiado. Prueba con 5 segundos."}, status_code=500)
+        return JSONResponse({"error": "No se pudo generar el video. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
 @app.post("/api/generar/calendario")
@@ -430,7 +441,8 @@ async def api_generar_calendario(request: Request):
                           contenido=json.dumps(cal, ensure_ascii=False))
         return JSONResponse({"ok": True, "calendario": cal})
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"[ERROR] Calendario: {e}")
+        return JSONResponse({"error": "No se pudo generar el calendario. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
 # ============================================================
