@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Configura tu negocio - Esteticai{% endblock %}
+{% block title %}{% if modo == "editar" %}Editar perfil{% else %}Configura tu negocio{% endif %} - Esteticai{% endblock %}
 {% block content %}
 <div class="setup-container">
     <div class="setup-card">
-        <h2>Configura tu negocio</h2>
-        <p class="setup-desc">Cuanto m&aacute;s me cuentes, mejor ser&aacute; el contenido que genere para ti.</p>
-        <form method="post" action="/perfil/crear">
+        <h2>{% if modo == "editar" %}Editar perfil de tu negocio{% else %}Configura tu negocio{% endif %}</h2>
+        <p class="setup-desc">{% if modo == "editar" %}Actualiza los datos de tu negocio para mejorar el contenido generado.{% else %}Cuanto m&aacute;s me cuentes, mejor ser&aacute; el contenido que genere para ti.{% endif %}</p>
+        <form method="post" action="{% if modo == 'editar' %}/perfil/editar{% else %}/perfil/crear{% endif %}">
 
             <div class="form-section">
                 <h3 class="form-section-title">Tu negocio</h3>
@@ -13,29 +13,32 @@
                 <div class="form-group">
                     <label for="nombre_negocio">Nombre de tu negocio *</label>
                     <input type="text" id="nombre_negocio" name="nombre_negocio" required
-                           placeholder="Ej: Clinica Bella Piel">
+                           placeholder="Ej: Cl&iacute;nica Bella Piel"
+                           value="{{ perfil.nombre_negocio if perfil else '' }}">
                 </div>
                 <div class="form-group">
                     <label for="propietaria">Tu nombre</label>
                     <input type="text" id="propietaria" name="propietaria"
-                           placeholder="Ej: Laura Martinez">
+                           placeholder="Ej: Laura Mart&iacute;nez"
+                           value="{{ perfil.propietaria if perfil else '' }}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="ciudad">Ciudad</label>
-                        <input type="text" id="ciudad" name="ciudad" placeholder="Ej: Madrid">
+                        <input type="text" id="ciudad" name="ciudad" placeholder="Ej: Madrid"
+                               value="{{ perfil.ciudad if perfil else '' }}">
                     </div>
                     <div class="form-group">
                         <label for="tipo_negocio">Tipo de negocio</label>
                         <select id="tipo_negocio" name="tipo_negocio">
-                            <option value="Centro de estetica">Centro de est&eacute;tica</option>
-                            <option value="Clinica de estetica facial y corporal">Cl&iacute;nica est&eacute;tica facial y corporal</option>
-                            <option value="Salon de belleza">Sal&oacute;n de belleza</option>
-                            <option value="Spa">Spa</option>
-                            <option value="Freelance esteticista">Freelance esteticista</option>
-                            <option value="Peluqueria con estetica">Peluquer&iacute;a con est&eacute;tica</option>
-                            <option value="Distribuidora de cosmetica">Distribuidora de cosm&eacute;tica</option>
-                            <option value="Tienda de cosmetica online">Tienda de cosm&eacute;tica online</option>
+                            <option value="Centro de estetica" {% if perfil and perfil.tipo_negocio == 'Centro de estetica' %}selected{% endif %}>Centro de est&eacute;tica</option>
+                            <option value="Clinica de estetica facial y corporal" {% if perfil and perfil.tipo_negocio == 'Clinica de estetica facial y corporal' %}selected{% endif %}>Cl&iacute;nica est&eacute;tica facial y corporal</option>
+                            <option value="Salon de belleza" {% if perfil and perfil.tipo_negocio == 'Salon de belleza' %}selected{% endif %}>Sal&oacute;n de belleza</option>
+                            <option value="Spa" {% if perfil and perfil.tipo_negocio == 'Spa' %}selected{% endif %}>Spa</option>
+                            <option value="Freelance esteticista" {% if perfil and perfil.tipo_negocio == 'Freelance esteticista' %}selected{% endif %}>Freelance esteticista</option>
+                            <option value="Peluqueria con estetica" {% if perfil and perfil.tipo_negocio == 'Peluqueria con estetica' %}selected{% endif %}>Peluquer&iacute;a con est&eacute;tica</option>
+                            <option value="Distribuidora de cosmetica" {% if perfil and perfil.tipo_negocio == 'Distribuidora de cosmetica' %}selected{% endif %}>Distribuidora de cosm&eacute;tica</option>
+                            <option value="Tienda de cosmetica online" {% if perfil and perfil.tipo_negocio == 'Tienda de cosmetica online' %}selected{% endif %}>Tienda de cosm&eacute;tica online</option>
                         </select>
                     </div>
                 </div>
@@ -45,19 +48,21 @@
                 <h3 class="form-section-title">Servicios y productos</h3>
 
                 <div class="form-group">
-                    <label for="servicios">Servicios que ofreces (uno por linea) *</label>
+                    <label for="servicios">Servicios que ofreces (uno por l&iacute;nea) *</label>
                     <textarea id="servicios" name="servicios" rows="5" required
                               placeholder="Limpieza facial profunda
 Tratamiento antimanchas
 Radiofrecuencia facial
-Depilacion laser"></textarea>
+Depilaci&oacute;n l&aacute;ser">{% if perfil and perfil.servicios %}{% for s in perfil.servicios %}{{ s }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
                 </div>
                 <div class="form-group">
-                    <label for="productos">Productos que vendes (uno por linea)</label>
+                    <label for="productos">Productos que vendes (uno por l&iacute;nea)</label>
                     <textarea id="productos" name="productos" rows="3"
                               placeholder="Serum vitamina C
 Crema hidratante facial
-Protector solar SPF 50"></textarea>
+Protector solar SPF 50">{% if perfil and perfil.productos %}{% for p in perfil.productos %}{{ p }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
                 </div>
             </div>
 
@@ -67,25 +72,26 @@ Protector solar SPF 50"></textarea>
                 <div class="form-group">
                     <label for="tono">Tono de comunicaci&oacute;n</label>
                     <select id="tono" name="tono">
-                        <option value="cercano">Cercano (como una amiga)</option>
-                        <option value="profesional">Profesional (clinica medica)</option>
-                        <option value="divertido">Divertido (joven y fresco)</option>
-                        <option value="elegante">Elegante (lujo y exclusividad)</option>
-                        <option value="educativo">Educativo (experta en piel)</option>
+                        <option value="cercano" {% if perfil and perfil.tono == 'cercano' %}selected{% endif %}>Cercano (como una amiga)</option>
+                        <option value="profesional" {% if perfil and perfil.tono == 'profesional' %}selected{% endif %}>Profesional (cl&iacute;nica m&eacute;dica)</option>
+                        <option value="divertido" {% if perfil and perfil.tono == 'divertido' %}selected{% endif %}>Divertido (joven y fresco)</option>
+                        <option value="elegante" {% if perfil and perfil.tono == 'elegante' %}selected{% endif %}>Elegante (lujo y exclusividad)</option>
+                        <option value="educativo" {% if perfil and perfil.tono == 'educativo' %}selected{% endif %}>Educativo (experta en piel)</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="valores">Valores de tu marca (uno por linea)</label>
+                    <label for="valores">Valores de tu marca (uno por l&iacute;nea)</label>
                     <textarea id="valores" name="valores" rows="3"
                               placeholder="Naturalidad
 Resultados visibles
-Trato personalizado"></textarea>
+Trato personalizado">{% if perfil and perfil.valores %}{% for v in perfil.valores %}{{ v }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
                     <span class="form-hint">Qu&eacute; hace especial a tu negocio. Esto aparecer&aacute; en tus publicaciones.</span>
                 </div>
                 <div class="form-group">
                     <label for="publico">Describe tu clienta ideal</label>
                     <textarea id="publico" name="publico" rows="2"
-                              placeholder="Ej: Mujeres de 30-55 a&ntilde;os que buscan cuidar su piel con tratamientos profesionales"></textarea>
+                              placeholder="Ej: Mujeres de 30-55 a&ntilde;os que buscan cuidar su piel con tratamientos profesionales">{% if perfil %}{{ perfil.publico }}{% endif %}</textarea>
                     <span class="form-hint">Cuanto m&aacute;s concreta, mejor ser&aacute; el contenido.</span>
                 </div>
             </div>
@@ -97,23 +103,28 @@ Trato personalizado"></textarea>
                     <label>&iquest;En qu&eacute; redes publicas?</label>
                     <div class="checkbox-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="redes" value="Instagram" checked> Instagram
+                            <input type="checkbox" name="redes" value="Instagram"
+                                   {% if not perfil or (perfil and 'Instagram' in perfil.redes) %}checked{% endif %}> Instagram
                         </label>
                         <label class="checkbox-label">
-                            <input type="checkbox" name="redes" value="Facebook"> Facebook
+                            <input type="checkbox" name="redes" value="Facebook"
+                                   {% if perfil and 'Facebook' in perfil.redes %}checked{% endif %}> Facebook
                         </label>
                         <label class="checkbox-label">
-                            <input type="checkbox" name="redes" value="TikTok"> TikTok
+                            <input type="checkbox" name="redes" value="TikTok"
+                                   {% if perfil and 'TikTok' in perfil.redes %}checked{% endif %}> TikTok
                         </label>
                         <label class="checkbox-label">
-                            <input type="checkbox" name="redes" value="LinkedIn"> LinkedIn
+                            <input type="checkbox" name="redes" value="LinkedIn"
+                                   {% if perfil and 'LinkedIn' in perfil.redes %}checked{% endif %}> LinkedIn
                         </label>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="instagram_handle">Usuario de Instagram</label>
                     <input type="text" id="instagram_handle" name="instagram_handle"
-                           placeholder="@tunegocio">
+                           placeholder="@tunegocio"
+                           value="{{ perfil.instagram_handle if perfil else '' }}">
                 </div>
                 <div class="form-group">
                     <label>Mejor horario para publicar (opcional)</label>
@@ -121,28 +132,33 @@ Trato personalizado"></textarea>
                         <div class="form-group">
                             <label for="horario_instagram" class="form-label-small">Instagram</label>
                             <select id="horario_instagram" name="horario_instagram">
-                                <option value="">No lo se</option>
-                                <option value="9:00-10:00">9:00 - 10:00</option>
-                                <option value="12:00-13:00">12:00 - 13:00</option>
-                                <option value="18:00-19:00">18:00 - 19:00</option>
-                                <option value="20:00-21:00">20:00 - 21:00</option>
+                                <option value="">No lo s&eacute;</option>
+                                <option value="9:00-10:00" {% if perfil and perfil.mejores_horarios.get('Instagram') == '9:00-10:00' %}selected{% endif %}>9:00 - 10:00</option>
+                                <option value="12:00-13:00" {% if perfil and perfil.mejores_horarios.get('Instagram') == '12:00-13:00' %}selected{% endif %}>12:00 - 13:00</option>
+                                <option value="18:00-19:00" {% if perfil and perfil.mejores_horarios.get('Instagram') == '18:00-19:00' %}selected{% endif %}>18:00 - 19:00</option>
+                                <option value="20:00-21:00" {% if perfil and perfil.mejores_horarios.get('Instagram') == '20:00-21:00' %}selected{% endif %}>20:00 - 21:00</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="horario_facebook" class="form-label-small">Facebook</label>
                             <select id="horario_facebook" name="horario_facebook">
-                                <option value="">No lo se</option>
-                                <option value="9:00-10:00">9:00 - 10:00</option>
-                                <option value="12:00-13:00">12:00 - 13:00</option>
-                                <option value="18:00-19:00">18:00 - 19:00</option>
-                                <option value="20:00-21:00">20:00 - 21:00</option>
+                                <option value="">No lo s&eacute;</option>
+                                <option value="9:00-10:00" {% if perfil and perfil.mejores_horarios.get('Facebook') == '9:00-10:00' %}selected{% endif %}>9:00 - 10:00</option>
+                                <option value="12:00-13:00" {% if perfil and perfil.mejores_horarios.get('Facebook') == '12:00-13:00' %}selected{% endif %}>12:00 - 13:00</option>
+                                <option value="18:00-19:00" {% if perfil and perfil.mejores_horarios.get('Facebook') == '18:00-19:00' %}selected{% endif %}>18:00 - 19:00</option>
+                                <option value="20:00-21:00" {% if perfil and perfil.mejores_horarios.get('Facebook') == '20:00-21:00' %}selected{% endif %}>20:00 - 21:00</option>
                             </select>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-full">Guardar y empezar</button>
+            <button type="submit" class="btn btn-primary btn-full">
+                {% if modo == "editar" %}Guardar cambios{% else %}Guardar y empezar{% endif %}
+            </button>
+            {% if modo == "editar" %}
+            <a href="/dashboard" class="btn btn-secondary btn-full" style="margin-top: 0.5rem; text-align: center; display: block;">Volver al dashboard</a>
+            {% endif %}
         </form>
     </div>
 </div>

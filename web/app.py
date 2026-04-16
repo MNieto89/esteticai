@@ -276,20 +276,8 @@ async def dashboard(request: Request):
 # PERFIL DE MARCA
 # ============================================================
 
-@app.get("/perfil/crear", response_class=HTMLResponse)
-async def perfil_crear_page(request: Request):
-    user = get_usuario_actual(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse(request, "perfil_crear.html", context={"user": user})
-
-
-@app.post("/perfil/crear")
-async def perfil_crear_submit(request: Request):
-    user = get_usuario_actual(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    form = await request.form()
+def _parsear_form_perfil(form):
+    """Extrae y parsea los datos del formulario de perfil."""
     servicios = [s.strip() for s in form.get("servicios", "").split("\n") if s.strip()]
     productos = [p.strip() for p in form.get("productos", "").split("\n") if p.strip()]
     valores = [v.strip() for v in form.get("valores", "").split("\n") if v.strip()]
@@ -301,18 +289,93 @@ async def perfil_crear_submit(request: Request):
         horario = form.get(f"horario_{red.lower()}", "")
         if horario:
             mejores_horarios[red] = horario
+    return {
+        "nombre_negocio": form.get("nombre_negocio", ""),
+        "propietaria": form.get("propietaria", ""),
+        "ciudad": form.get("ciudad", ""),
+        "tipo_negocio": form.get("tipo_negocio", "Centro de estetica"),
+        "servicios": json.dumps(servicios),
+        "productos": json.dumps(productos),
+        "tono": form.get("tono", "cercano"),
+        "instagram_handle": form.get("instagram_handle", ""),
+        "valores": json.dumps(valores),
+        "publico": form.get("publico", ""),
+        "redes": json.dumps(redes_seleccionadas),
+        "mejores_horarios": json.dumps(mejores_horarios),
+    }
+
+
+@app.get("/perfil/crear", response_class=HTMLResponse)
+async def perfil_crear_page(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(request, "perfil_crear.html", context={
+        "user": user, "perfil": None, "modo": "crear",
+    })
+
+
+@app.post("/perfil/crear")
+async def perfil_crear_submit(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    form = await request.form()
+    datos = _parsear_form_perfil(form)
     db = get_db()
     db.execute(
         """INSERT INTO perfiles (usuario_id, nombre_negocio, propietaria, ciudad,
            tipo_negocio, servicios, productos, tono, instagram_handle,
            valores, publico, redes, mejores_horarios)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (user["id"], form.get("nombre_negocio", ""), form.get("propietaria", ""),
-         form.get("ciudad", ""), form.get("tipo_negocio", "Centro de estetica"),
-         json.dumps(servicios), json.dumps(productos),
-         form.get("tono", "cercano"), form.get("instagram_handle", ""),
-         json.dumps(valores), form.get("publico", ""),
-         json.dumps(redes_seleccionadas), json.dumps(mejores_horarios))
+        (user["id"], datos["nombre_negocio"], datos["propietaria"],
+         datos["ciudad"], datos["tipo_negocio"],
+         datos["servicios"], datos["productos"],
+         datos["tono"], datos["instagram_handle"],
+         datos["valores"], datos["publico"],
+         datos["redes"], datos["mejores_horarios"])
+    )
+    db.commit()
+    db.close()
+    return RedirectResponse("/dashboard", status_code=303)
+
+
+@app.get("/perfil/editar", response_class=HTMLResponse)
+async def perfil_editar_page(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    perfil = get_perfil_activo(user["id"])
+    if not perfil:
+        return RedirectResponse("/perfil/crear", status_code=303)
+    return templates.TemplateResponse(request, "perfil_crear.html", context={
+        "user": user, "perfil": perfil, "modo": "editar",
+    })
+
+
+@app.post("/perfil/editar")
+async def perfil_editar_submit(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    perfil = get_perfil_activo(user["id"])
+    if not perfil:
+        return RedirectResponse("/perfil/crear", status_code=303)
+    form = await request.form()
+    datos = _parsear_form_perfil(form)
+    db = get_db()
+    db.execute(
+        """UPDATE perfiles SET nombre_negocio=?, propietaria=?, ciudad=?,
+           tipo_negocio=?, servicios=?, productos=?, tono=?, instagram_handle=?,
+           valores=?, publico=?, redes=?, mejores_horarios=?
+           WHERE id=?""",
+        (datos["nombre_negocio"], datos["propietaria"],
+         datos["ciudad"], datos["tipo_negocio"],
+         datos["servicios"], datos["productos"],
+         datos["tono"], datos["instagram_handle"],
+         datos["valores"], datos["publico"],
+         datos["redes"], datos["mejores_horarios"],
+         perfil["id"])
     )
     db.commit()
     db.close()

@@ -4,6 +4,123 @@
 
 let ultimaImagenUrl = null;
 
+
+// ============================================================
+// ONBOARDING / TUTORIAL PRIMERA VEZ
+// ============================================================
+
+const ONBOARDING_PASOS = [
+    {
+        titulo: "Bienvenida a Esteticai",
+        texto: "Tu asistente de contenido para redes sociales. Te voy a ense&ntilde;ar las herramientas que tienes disponibles.",
+        target: null,
+    },
+    {
+        titulo: "Generar Copy",
+        texto: "Crea textos profesionales con hashtags, CTA y estrategia para cada publicaci&oacute;n. Solo elige el tipo de post y el servicio.",
+        target: "card-copy",
+    },
+    {
+        titulo: "Generar Imagen",
+        texto: "Genera im&aacute;genes profesionales con IA para tus posts. Elige servicio y formato, y la IA crea la imagen perfecta.",
+        target: "card-imagen",
+    },
+    {
+        titulo: "Crear Video",
+        texto: "Convierte tus im&aacute;genes en videos animados para Reels y TikTok. Varios estilos de movimiento disponibles.",
+        target: "card-video",
+    },
+    {
+        titulo: "Antes y Despu&eacute;s",
+        texto: "Sube la foto del antes y la del despu&eacute;s, y creamos una composici&oacute;n profesional lista para publicar.",
+        target: "card-antes-despues",
+    },
+    {
+        titulo: "Mejorar Foto Real",
+        texto: "Sube una foto de tu cl&iacute;nica o tratamiento y la mejoramos: cambio de fondo, mejor calidad y aspecto profesional.",
+        target: "card-foto",
+    },
+    {
+        titulo: "Calendario Semanal",
+        texto: "Genera un plan completo de contenido para toda la semana con estrategia, copys y horarios recomendados.",
+        target: "card-calendario",
+    },
+    {
+        titulo: "&iexcl;Todo listo!",
+        texto: "Ya conoces todas las herramientas. Pulsa en cualquier tarjeta para empezar a crear contenido para tu negocio.",
+        target: null,
+    },
+];
+
+let onboardingPasoActual = 0;
+
+function iniciarOnboarding() {
+    if (localStorage.getItem('esteticai_onboarding_visto')) return;
+    if (!document.querySelector('.generators')) return;
+    onboardingPasoActual = 0;
+    mostrarPasoOnboarding();
+}
+
+function mostrarPasoOnboarding() {
+    // Limpiar overlay anterior
+    const existente = document.getElementById('onboarding-overlay');
+    if (existente) existente.remove();
+    document.querySelectorAll('.onboarding-highlight').forEach(el => el.classList.remove('onboarding-highlight'));
+
+    if (onboardingPasoActual >= ONBOARDING_PASOS.length) {
+        localStorage.setItem('esteticai_onboarding_visto', '1');
+        return;
+    }
+
+    const paso = ONBOARDING_PASOS[onboardingPasoActual];
+    const esUltimo = onboardingPasoActual === ONBOARDING_PASOS.length - 1;
+    const esPrimero = onboardingPasoActual === 0;
+
+    // Crear overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'onboarding-overlay';
+    overlay.innerHTML = `
+        <div class="onboarding-card">
+            <div class="onboarding-step">${onboardingPasoActual + 1} / ${ONBOARDING_PASOS.length}</div>
+            <h3 class="onboarding-titulo">${paso.titulo}</h3>
+            <p class="onboarding-texto">${paso.texto}</p>
+            <div class="onboarding-actions">
+                <button class="btn btn-secondary onboarding-btn-skip" onclick="cerrarOnboarding()">Saltar</button>
+                <button class="btn btn-primary onboarding-btn-next" onclick="siguientePasoOnboarding()">
+                    ${esUltimo ? 'Empezar' : 'Siguiente'}
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Highlight target
+    if (paso.target) {
+        const targetEl = document.getElementById(paso.target);
+        if (targetEl) {
+            targetEl.classList.add('onboarding-highlight');
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+}
+
+function siguientePasoOnboarding() {
+    onboardingPasoActual++;
+    mostrarPasoOnboarding();
+}
+
+function cerrarOnboarding() {
+    const overlay = document.getElementById('onboarding-overlay');
+    if (overlay) overlay.remove();
+    document.querySelectorAll('.onboarding-highlight').forEach(el => el.classList.remove('onboarding-highlight'));
+    localStorage.setItem('esteticai_onboarding_visto', '1');
+}
+
+// Iniciar onboarding al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(iniciarOnboarding, 500);
+});
+
 // Toggle cards
 document.querySelectorAll('.gen-card').forEach(card => {
     card.addEventListener('click', function(e) {
@@ -86,9 +203,10 @@ async function generarCopy() {
                 html += `<div class="copy-nota">${copy.nota_para_la_clienta}</div>`;
             }
 
-            // Boton copiar
+            // Botones copiar y regenerar
             html += `<div class="copy-actions">`;
             html += `<button class="btn btn-secondary" onclick="copiarTexto(this)" data-copy="${encodeURIComponent(copy.copy || '')}">Copiar copy</button>`;
+            html += `<button class="btn btn-secondary" onclick="generarCopy()">Regenerar</button>`;
             html += `</div>`;
 
             resultDiv.innerHTML = html;
@@ -130,9 +248,15 @@ async function generarImagen() {
                     </div>`;
                 } else {
                     ultimaImagenUrl = img.url;
-                    html += `<div style="margin-top:12px;">
-                        <button class="btn btn-primary" onclick="prepararVideo()">
-                            Convertir en video para Reels
+                    html += `<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-primary" onclick="descargarImagen('${img.url}', 'esteticai_imagen')">
+                            Descargar imagen
+                        </button>
+                        <button class="btn btn-secondary" onclick="prepararVideo()">
+                            Convertir en video
+                        </button>
+                        <button class="btn btn-secondary" onclick="generarImagen()">
+                            Regenerar
                         </button>
                     </div>`;
                     document.getElementById('video-url').value = img.url;
@@ -206,10 +330,13 @@ async function generarVideo() {
                     <video controls autoplay muted loop style="max-width:100%;border-radius:8px;">
                         <source src="${video.url}" type="video/mp4">
                     </video>
-                    <div style="margin-top:8px;">
-                        <a href="${video.url}" download class="btn btn-secondary" target="_blank">
+                    <div style="margin-top:8px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                        <a href="${video.url}" download class="btn btn-primary" target="_blank">
                             Descargar video
                         </a>
+                        <button class="btn btn-secondary" onclick="generarVideo()">
+                            Regenerar
+                        </button>
                     </div>
                 `;
             } else {
@@ -283,6 +410,11 @@ async function generarCalendario() {
             if (consejo) {
                 html += `<div class="cal-consejo"><strong>Consejo de la semana:</strong> ${consejo}</div>`;
             }
+
+            // Boton regenerar
+            html += `<div style="margin-top:16px; text-align:center;">
+                <button class="btn btn-secondary" onclick="generarCalendario()">Regenerar calendario</button>
+            </div>`;
 
             resultDiv.innerHTML = html || '<div>Calendario generado (revisa la consola para detalles)</div>';
         } else {
@@ -382,8 +514,9 @@ async function mejorarFoto() {
                 html += `<div class="foto-info"><span>${r.total_pasos} mejoras aplicadas</span></div>`;
 
                 html += `<div class="foto-actions">`;
-                html += `<a href="${r.url_final}" download class="btn btn-primary" target="_blank">Descargar imagen</a>`;
-                html += `<button class="btn btn-secondary" onclick="usarParaVideo('${r.url_final}')">Crear video con esta foto</button>`;
+                html += `<button class="btn btn-primary" onclick="descargarImagen('${r.url_final}', 'esteticai_foto_mejorada')">Descargar imagen</button>`;
+                html += `<button class="btn btn-secondary" onclick="usarParaVideo('${r.url_final}')">Crear video</button>`;
+                html += `<button class="btn btn-secondary" onclick="mejorarFoto()">Regenerar</button>`;
                 html += `</div>`;
 
                 ultimaImagenUrl = r.url_final;
@@ -513,7 +646,7 @@ async function componerAntesDespues() {
             html += `<span class="copy-tag">${r.tamano_kb} KB</span>`;
             html += `</div>`;
             html += `<div class="ad-actions">`;
-            html += `<a href="${r.image_base64}" download="antes_despues_${plantilla}.jpg" class="btn btn-primary">Descargar imagen</a>`;
+            html += `<button class="btn btn-primary" onclick="descargarImagen('${r.image_base64}', 'esteticai_antes_despues_${plantilla}')">Descargar imagen</button>`;
             html += `<button class="btn btn-secondary" onclick="resetAntesDespues()">Crear otra</button>`;
             html += `</div>`;
             html += `</div>`;
@@ -541,6 +674,44 @@ function resetAntesDespues() {
     document.getElementById('btn-ad').disabled = true;
     document.getElementById('btn-ad').textContent = 'Sube las dos fotos';
     document.getElementById('result-antes-despues').style.display = 'none';
+}
+
+
+// ============================================================
+// DESCARGAR IMAGEN (universal - URL y base64)
+// ============================================================
+
+function descargarImagen(src, nombre) {
+    const timestamp = new Date().toISOString().slice(0,19).replace(/[-:T]/g, '');
+    const filename = (nombre || 'esteticai') + '_' + timestamp + '.jpg';
+
+    if (src.startsWith('data:')) {
+        // Base64 directo
+        const a = document.createElement('a');
+        a.href = src;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } else {
+        // URL remota - fetch y descargar como blob
+        fetch(src)
+            .then(r => r.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            })
+            .catch(() => {
+                // Fallback: abrir en nueva pestana
+                window.open(src, '_blank');
+            });
+    }
 }
 
 

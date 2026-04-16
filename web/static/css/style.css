@@ -788,6 +788,73 @@ body {
     gap: 8px;
 }
 
+/* Onboarding overlay */
+#onboarding-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.onboarding-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    text-align: center;
+}
+.onboarding-step {
+    font-size: 12px;
+    color: var(--gris);
+    font-weight: 500;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.onboarding-titulo {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--negro);
+    margin-bottom: 10px;
+}
+.onboarding-texto {
+    font-size: 15px;
+    color: var(--gris);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+.onboarding-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.onboarding-btn-skip {
+    font-size: 13px;
+    padding: 8px 20px;
+}
+.onboarding-btn-next {
+    font-size: 14px;
+    padding: 10px 28px;
+}
+.onboarding-highlight {
+    position: relative;
+    z-index: 10000;
+    box-shadow: 0 0 0 4px var(--rosa), 0 0 20px rgba(232, 101, 134, 0.3) !important;
+    border-radius: 16px;
+}
+
 /* Mobile */
 @media (max-width: 600px) {
     .hero-content h1 { font-size: 36px; }
