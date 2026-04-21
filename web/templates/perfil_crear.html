@@ -5,6 +5,9 @@
     <div class="setup-card">
         <h2>{% if modo == "editar" %}Editar perfil de tu negocio{% else %}Configura tu negocio{% endif %}</h2>
         <p class="setup-desc">{% if modo == "editar" %}Actualiza los datos de tu negocio para mejorar el contenido generado.{% else %}Cuanto m&aacute;s me cuentes, mejor ser&aacute; el contenido que genere para ti.{% endif %}</p>
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
         <form method="post" action="{% if modo == 'editar' %}/perfil/editar{% else %}/perfil/crear{% endif %}">
 
             <div class="form-section">

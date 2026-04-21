@@ -187,8 +187,11 @@ body {
 }
 .auth-link a { color: var(--rosa-oscuro); }
 
-.alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
+.alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; line-height: 1.5; }
 .alert-error { background: #fde8e8; color: var(--error); }
+.alert-success { background: #e8f8e8; color: #27ae60; }
+.alert-info { background: #e8f0fe; color: #2563eb; }
+.auth-desc { font-size: 14px; color: var(--gris); margin-bottom: 16px; line-height: 1.5; }
 
 /* Setup */
 .setup-container {
@@ -394,21 +397,52 @@ body {
     margin-bottom: 16px;
     color: var(--texto);
 }
+.historial-filtros {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.historial-filtro {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gris);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.historial-filtro:hover { border-color: var(--rosa); color: var(--rosa); }
+.historial-filtro.active {
+    background: var(--rosa);
+    color: white;
+    border-color: var(--rosa);
+}
 .historial-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
 }
 .historial-item {
     background: white;
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 14px;
     box-shadow: var(--sombra);
+    transition: transform 0.2s;
+}
+.historial-item:hover { transform: translateY(-2px); }
+.historial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
 }
 .historial-tipo {
     display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -417,18 +451,45 @@ body {
 .historial-imagen .historial-tipo { background: var(--rosa-claro); color: var(--rosa-oscuro); }
 .historial-video .historial-tipo { background: #e8f4fd; color: #2980b9; }
 .historial-calendario .historial-tipo { background: #e8fde8; color: #27ae60; }
+.historial-foto .historial-tipo { background: #fef3e8; color: #e67e22; }
+.historial-composicion .historial-tipo { background: #f3e8fe; color: #9b59b6; }
 .historial-fecha {
-    display: block;
     font-size: 11px;
     color: var(--gris);
-    margin-top: 4px;
 }
 .historial-img {
     width: 100%;
-    height: 100px;
+    height: 140px;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+.historial-preview {
+    font-size: 13px;
+    color: var(--gris);
+    line-height: 1.4;
+    margin-top: 6px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+.historial-actions {
     margin-top: 8px;
+    text-align: right;
+}
+.historial-video-thumb {
+    background: #f0f4f8;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+.historial-play {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 8px;
+    color: var(--rosa);
 }
 
 /* Landing sections */

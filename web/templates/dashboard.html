@@ -201,13 +201,39 @@
     {% if generaciones %}
     <div class="historial">
         <h2>Historial reciente</h2>
+        <div class="historial-filtros">
+            <button class="historial-filtro active" onclick="filtrarHistorial('todos', this)">Todos</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('copy', this)">Copys</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('imagen', this)">Im&aacute;genes</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('video', this)">Videos</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('foto', this)">Fotos</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('calendario', this)">Calendarios</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('composicion', this)">Composiciones</button>
+        </div>
         <div class="historial-grid">
             {% for gen in generaciones %}
-            <div class="historial-item historial-{{ gen.tipo }}">
-                <span class="historial-tipo">{{ gen.tipo }}</span>
-                <span class="historial-fecha">{{ gen.creado_en[:16] }}</span>
-                {% if gen.imagen_url and gen.imagen_url.startswith('http') %}
+            <div class="historial-item historial-{{ gen.tipo }}" data-tipo="{{ gen.tipo }}">
+                <div class="historial-header">
+                    <span class="historial-tipo">{{ gen.tipo }}</span>
+                    <span class="historial-fecha">{{ gen.creado_en[:16].replace('T', ' ') }}</span>
+                </div>
+                {% if gen.imagen_url and (gen.imagen_url.startswith('http') or gen.imagen_url.startswith('data:')) %}
                 <img src="{{ gen.imagen_url }}" alt="Imagen generada" class="historial-img" loading="lazy">
+                <div class="historial-actions">
+                    <button class="btn btn-sm" onclick="descargarImagen('{{ gen.imagen_url }}', 'esteticai_{{ gen.tipo }}')">Descargar</button>
+                </div>
+                {% endif %}
+                {% if gen.video_url and gen.video_url.startswith('http') %}
+                <div class="historial-video-thumb">
+                    <span class="historial-play">&#9654;</span>
+                    <a href="{{ gen.video_url }}" target="_blank" class="btn btn-sm">Ver video</a>
+                </div>
+                {% endif %}
+                {% if gen.contenido and gen.tipo == 'copy' %}
+                <div class="historial-preview">{{ gen.contenido[:120] }}{% if gen.contenido|length > 120 %}...{% endif %}</div>
+                {% endif %}
+                {% if gen.tipo == 'calendario' and gen.contenido %}
+                <div class="historial-preview">Calendario semanal generado</div>
                 {% endif %}
             </div>
             {% endfor %}

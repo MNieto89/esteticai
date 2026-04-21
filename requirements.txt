@@ -6,4 +6,6 @@ uvicorn[standard]
 jinja2
 python-multipart
 itsdangerous
+bcrypt
 Pillow
+reportlab

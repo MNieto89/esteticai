@@ -7,6 +7,9 @@
         {% if error %}
         <div class="alert alert-error">{{ error }}</div>
         {% endif %}
+        {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+        {% endif %}
         <form method="post" action="/login">
             <div class="form-group">
                 <label for="email">Email</label>
@@ -18,6 +21,7 @@
             </div>
             <button type="submit" class="btn btn-primary btn-full">Entrar</button>
         </form>
+        <p class="auth-link"><a href="/recuperar">&iquest;Olvidaste tu contrase&ntilde;a?</a></p>
         <p class="auth-link">&iquest;No tienes cuenta? <a href="/registro">Reg&iacute;strate</a></p>
     </div>
 </div>

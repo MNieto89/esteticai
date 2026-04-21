@@ -411,10 +411,14 @@ async function generarCalendario() {
                 html += `<div class="cal-consejo"><strong>Consejo de la semana:</strong> ${consejo}</div>`;
             }
 
-            // Boton regenerar
-            html += `<div style="margin-top:16px; text-align:center;">
+            // Botones regenerar y exportar PDF
+            html += `<div style="margin-top:16px; text-align:center; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="exportarCalendarioPDF()">Exportar a PDF</button>
                 <button class="btn btn-secondary" onclick="generarCalendario()">Regenerar calendario</button>
             </div>`;
+
+            // Guardar calendario para exportar
+            window._ultimoCalendario = cal;
 
             resultDiv.innerHTML = html || '<div>Calendario generado (revisa la consola para detalles)</div>';
         } else {
@@ -737,5 +741,56 @@ function copiarTexto(btn) {
         document.body.removeChild(ta);
         btn.textContent = 'Copiado!';
         setTimeout(() => { btn.textContent = 'Copiar copy'; }, 2000);
+    });
+}
+
+
+// ============================================================
+// EXPORTAR CALENDARIO A PDF
+// ============================================================
+
+async function exportarCalendarioPDF() {
+    if (!window._ultimoCalendario) {
+        alert('Genera un calendario primero');
+        return;
+    }
+
+    try {
+        const data = await apiCall('/api/calendario/pdf', {
+            calendario: window._ultimoCalendario
+        });
+
+        if (data.ok && data.pdf_base64) {
+            const a = document.createElement('a');
+            a.href = data.pdf_base64;
+            a.download = data.filename || 'calendario_esteticai.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } else {
+            alert(data.error || 'Error al generar el PDF');
+        }
+    } catch (e) {
+        alert('Error de conexion: ' + e.message);
+    }
+}
+
+
+// ============================================================
+// HISTORIAL - FILTROS
+// ============================================================
+
+function filtrarHistorial(tipo, btn) {
+    // Actualizar botones activos
+    document.querySelectorAll('.historial-filtro').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Filtrar items
+    document.querySelectorAll('.historial-item').forEach(item => {
+        if (tipo === 'todos' || item.dataset.tipo === tipo) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
     });
 }

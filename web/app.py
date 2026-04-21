@@ -10,6 +10,7 @@ import sys
 import json
 import hashlib
 import secrets
+import bcrypt
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -93,6 +94,14 @@ def init_db():
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         );
 
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            usado INTEGER DEFAULT 0,
+            creado_en TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS generaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario_id INTEGER NOT NULL,
@@ -126,7 +135,63 @@ init_db()
 # ============================================================
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash con bcrypt (seguro, con salt automático)."""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verificar_password(password, stored_hash):
+    """Verifica password. Compatible con bcrypt y SHA256 legacy.
+    Si detecta hash SHA256 antiguo, lo migra a bcrypt automáticamente."""
+    if stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$"):
+        return bcrypt.checkpw(password.encode(), stored_hash.encode())
+    else:
+        # Legacy SHA256 — verificar y migrar
+        return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+
+def _migrar_password_si_legacy(user_id, password, stored_hash):
+    """Si el hash es SHA256 legacy, actualiza a bcrypt en la DB."""
+    if not (stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$")):
+        nuevo_hash = hash_password(password)
+        db = get_db()
+        db.execute("UPDATE usuarios SET password_hash = ? WHERE id = ?",
+                   (nuevo_hash, user_id))
+        db.commit()
+        db.close()
+
+
+import re
+
+def validar_email(email):
+    """Valida formato básico de email."""
+    return bool(re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email))
+
+
+def sanitizar_texto(texto, max_len=500):
+    """Limpia y limita longitud de texto del usuario."""
+    if not texto:
+        return ""
+    texto = texto.strip()
+    if len(texto) > max_len:
+        texto = texto[:max_len]
+    return texto
+
+
+def validar_registro(nombre, email, password):
+    """Valida datos de registro. Retorna error string o None."""
+    if not nombre or len(nombre.strip()) < 2:
+        return "El nombre debe tener al menos 2 caracteres."
+    if len(nombre) > 100:
+        return "El nombre es demasiado largo (m\u00e1ximo 100 caracteres)."
+    if not email or not validar_email(email):
+        return "Introduce un email v\u00e1lido."
+    if len(email) > 200:
+        return "El email es demasiado largo."
+    if not password or len(password) < 6:
+        return "La contrase\u00f1a debe tener al menos 6 caracteres."
+    if len(password) > 200:
+        return "La contrase\u00f1a es demasiado larga."
+    return None
 
 
 def get_usuario_actual(request: Request):
@@ -205,10 +270,12 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
     db = get_db()
     user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
     db.close()
-    if not user or user["password_hash"] != hash_password(password):
+    if not user or not verificar_password(password, user["password_hash"]):
         return templates.TemplateResponse(request, "login.html", context={
             "error": "Email o contrase\u00f1a incorrectos"
         })
+    # Migrar hash legacy a bcrypt si es necesario
+    _migrar_password_si_legacy(user["id"], password, user["password_hash"])
     request.session["user_id"] = user["id"]
     return RedirectResponse("/dashboard", status_code=303)
 
@@ -221,6 +288,13 @@ async def registro_page(request: Request):
 @app.post("/registro")
 async def registro_submit(request: Request, nombre: str = Form(...),
                            email: str = Form(...), password: str = Form(...)):
+    # Sanitizar
+    nombre = sanitizar_texto(nombre, 100)
+    email = sanitizar_texto(email, 200).lower()
+    # Validar
+    error = validar_registro(nombre, email, password)
+    if error:
+        return templates.TemplateResponse(request, "registro.html", context={"error": error})
     db = get_db()
     existe = db.execute("SELECT id FROM usuarios WHERE email = ?", (email,)).fetchone()
     if existe:
@@ -243,6 +317,98 @@ async def registro_submit(request: Request, nombre: str = Form(...),
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+# ============================================================
+# RECUPERAR CONTRASEÑA
+# ============================================================
+
+@app.get("/recuperar", response_class=HTMLResponse)
+async def recuperar_page(request: Request):
+    return templates.TemplateResponse(request, "recuperar.html", context={
+        "error": None, "success": None, "reset_link": None
+    })
+
+
+@app.post("/recuperar")
+async def recuperar_submit(request: Request, email: str = Form(...)):
+    db = get_db()
+    user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
+    if not user:
+        db.close()
+        # No revelar si el email existe o no (seguridad)
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": None, "reset_link": None,
+            "success": "Si el email existe, se ha generado un enlace de recuperaci\u00f3n."
+        })
+    # Invalidar tokens anteriores
+    db.execute("UPDATE password_resets SET usado = 1 WHERE email = ? AND usado = 0", (email,))
+    # Crear nuevo token
+    token = secrets.token_urlsafe(32)
+    db.execute("INSERT INTO password_resets (email, token) VALUES (?, ?)", (email, token))
+    db.commit()
+    db.close()
+    # En producción: enviar email con el enlace
+    # Por ahora: mostrar enlace directamente (modo desarrollo/demo)
+    reset_link = f"/reset/{token}"
+    return templates.TemplateResponse(request, "recuperar.html", context={
+        "error": None, "reset_link": reset_link,
+        "success": "Enlace de recuperaci\u00f3n generado. En producci\u00f3n se enviar\u00e1 por email."
+    })
+
+
+@app.get("/reset/{token}", response_class=HTMLResponse)
+async def reset_page(request: Request, token: str):
+    db = get_db()
+    reset = db.execute(
+        "SELECT * FROM password_resets WHERE token = ? AND usado = 0", (token,)
+    ).fetchone()
+    db.close()
+    if not reset:
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": "Enlace inv\u00e1lido o expirado. Solicita uno nuevo.",
+            "success": None, "reset_link": None
+        })
+    # Verificar que no tenga más de 1 hora
+    from datetime import datetime as dt
+    creado = dt.strptime(reset["creado_en"], "%Y-%m-%d %H:%M:%S")
+    if (dt.utcnow() - creado).total_seconds() > 3600:
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": "El enlace ha expirado (m\u00e1ximo 1 hora). Solicita uno nuevo.",
+            "success": None, "reset_link": None
+        })
+    return templates.TemplateResponse(request, "reset_password.html", context={
+        "token": token, "error": None
+    })
+
+
+@app.post("/reset/{token}")
+async def reset_submit(request: Request, token: str, password: str = Form(...)):
+    if len(password) < 6:
+        return templates.TemplateResponse(request, "reset_password.html", context={
+            "token": token,
+            "error": "La contrase\u00f1a debe tener al menos 6 caracteres."
+        })
+    db = get_db()
+    reset = db.execute(
+        "SELECT * FROM password_resets WHERE token = ? AND usado = 0", (token,)
+    ).fetchone()
+    if not reset:
+        db.close()
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": "Enlace inv\u00e1lido o ya usado.",
+            "success": None, "reset_link": None
+        })
+    # Actualizar password
+    db.execute("UPDATE usuarios SET password_hash = ? WHERE email = ?",
+               (hash_password(password), reset["email"]))
+    db.execute("UPDATE password_resets SET usado = 1 WHERE token = ?", (token,))
+    db.commit()
+    db.close()
+    return templates.TemplateResponse(request, "login.html", context={
+        "error": None,
+        "success": "Contrase\u00f1a actualizada. Ya puedes iniciar sesi\u00f3n."
+    })
 
 
 # ============================================================
@@ -276,30 +442,64 @@ async def dashboard(request: Request):
 # PERFIL DE MARCA
 # ============================================================
 
+TIPOS_NEGOCIO_VALIDOS = [
+    "Centro de estetica", "Clinica de estetica facial y corporal",
+    "Salon de belleza", "Spa", "Freelance esteticista",
+    "Peluqueria con estetica", "Distribuidora de cosmetica",
+    "Tienda de cosmetica online"
+]
+TONOS_VALIDOS = ["cercano", "profesional", "divertido", "elegante", "educativo"]
+REDES_VALIDAS = ["Instagram", "Facebook", "TikTok", "LinkedIn"]
+
+
 def _parsear_form_perfil(form):
-    """Extrae y parsea los datos del formulario de perfil."""
-    servicios = [s.strip() for s in form.get("servicios", "").split("\n") if s.strip()]
-    productos = [p.strip() for p in form.get("productos", "").split("\n") if p.strip()]
-    valores = [v.strip() for v in form.get("valores", "").split("\n") if v.strip()]
-    redes_seleccionadas = form.getlist("redes")
+    """Extrae, sanitiza y valida los datos del formulario de perfil."""
+    # Sanitizar textos con límites
+    nombre_negocio = sanitizar_texto(form.get("nombre_negocio", ""), 150)
+    propietaria = sanitizar_texto(form.get("propietaria", ""), 100)
+    ciudad = sanitizar_texto(form.get("ciudad", ""), 100)
+    publico = sanitizar_texto(form.get("publico", ""), 500)
+    instagram_handle = sanitizar_texto(form.get("instagram_handle", ""), 50)
+
+    # Validar tipo negocio y tono contra whitelist
+    tipo_negocio = form.get("tipo_negocio", "Centro de estetica")
+    if tipo_negocio not in TIPOS_NEGOCIO_VALIDOS:
+        tipo_negocio = "Centro de estetica"
+    tono = form.get("tono", "cercano")
+    if tono not in TONOS_VALIDOS:
+        tono = "cercano"
+
+    # Listas con límite de items y longitud por item
+    servicios_raw = form.get("servicios", "").split("\n")
+    servicios = [sanitizar_texto(s, 100) for s in servicios_raw if s.strip()][:30]
+    productos_raw = form.get("productos", "").split("\n")
+    productos = [sanitizar_texto(p, 100) for p in productos_raw if p.strip()][:30]
+    valores_raw = form.get("valores", "").split("\n")
+    valores = [sanitizar_texto(v, 100) for v in valores_raw if v.strip()][:15]
+
+    # Redes: validar contra whitelist
+    redes_seleccionadas = [r for r in form.getlist("redes") if r in REDES_VALIDAS]
     if not redes_seleccionadas:
         redes_seleccionadas = ["Instagram"]
+
     mejores_horarios = {}
+    horarios_validos = ["", "9:00-10:00", "12:00-13:00", "18:00-19:00", "20:00-21:00"]
     for red in redes_seleccionadas:
         horario = form.get(f"horario_{red.lower()}", "")
-        if horario:
+        if horario in horarios_validos and horario:
             mejores_horarios[red] = horario
+
     return {
-        "nombre_negocio": form.get("nombre_negocio", ""),
-        "propietaria": form.get("propietaria", ""),
-        "ciudad": form.get("ciudad", ""),
-        "tipo_negocio": form.get("tipo_negocio", "Centro de estetica"),
+        "nombre_negocio": nombre_negocio,
+        "propietaria": propietaria,
+        "ciudad": ciudad,
+        "tipo_negocio": tipo_negocio,
         "servicios": json.dumps(servicios),
         "productos": json.dumps(productos),
-        "tono": form.get("tono", "cercano"),
-        "instagram_handle": form.get("instagram_handle", ""),
+        "tono": tono,
+        "instagram_handle": instagram_handle,
         "valores": json.dumps(valores),
-        "publico": form.get("publico", ""),
+        "publico": publico,
         "redes": json.dumps(redes_seleccionadas),
         "mejores_horarios": json.dumps(mejores_horarios),
     }
@@ -322,6 +522,18 @@ async def perfil_crear_submit(request: Request):
         return RedirectResponse("/login", status_code=303)
     form = await request.form()
     datos = _parsear_form_perfil(form)
+    # Validar campos obligatorios
+    if not datos["nombre_negocio"]:
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "user": user, "perfil": None, "modo": "crear",
+            "error": "El nombre del negocio es obligatorio."
+        })
+    servicios_list = json.loads(datos["servicios"])
+    if not servicios_list:
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "user": user, "perfil": None, "modo": "crear",
+            "error": "A\u00f1ade al menos un servicio."
+        })
     db = get_db()
     db.execute(
         """INSERT INTO perfiles (usuario_id, nombre_negocio, propietaria, ciudad,
@@ -506,6 +718,122 @@ async def api_generar_calendario(request: Request):
     except Exception as e:
         print(f"[ERROR] Calendario: {e}")
         return JSONResponse({"error": "No se pudo generar el calendario. Int\u00e9ntalo de nuevo."}, status_code=500)
+
+
+# ============================================================
+# API - EXPORTAR CALENDARIO A PDF
+# ============================================================
+
+@app.post("/api/calendario/pdf")
+async def api_calendario_pdf(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+    perfil = get_perfil_activo(user["id"])
+    if not perfil:
+        return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
+
+    data = await request.json()
+    cal = data.get("calendario", {})
+    if not cal:
+        return JSONResponse({"error": "No hay calendario para exportar"}, status_code=400)
+
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.units import mm
+        import io
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                topMargin=25*mm, bottomMargin=20*mm,
+                                leftMargin=20*mm, rightMargin=20*mm)
+
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name='BrandTitle', fontSize=20, fontName='Helvetica-Bold',
+                                  textColor=colors.HexColor('#e86586'), spaceAfter=6))
+        styles.add(ParagraphStyle(name='SubTitle', fontSize=11, fontName='Helvetica',
+                                  textColor=colors.HexColor('#888'), spaceAfter=14))
+        styles.add(ParagraphStyle(name='DayTitle', fontSize=13, fontName='Helvetica-Bold',
+                                  textColor=colors.HexColor('#333'), spaceBefore=10, spaceAfter=4))
+        styles.add(ParagraphStyle(name='CopyText', fontSize=10, fontName='Helvetica',
+                                  textColor=colors.HexColor('#444'), leading=14, spaceAfter=4))
+        styles.add(ParagraphStyle(name='MetaText', fontSize=9, fontName='Helvetica-Oblique',
+                                  textColor=colors.HexColor('#999'), spaceAfter=8))
+        styles.add(ParagraphStyle(name='StrategyBox', fontSize=10, fontName='Helvetica-Oblique',
+                                  textColor=colors.HexColor('#e86586'), backColor=colors.HexColor('#fef0f3'),
+                                  borderPadding=8, spaceAfter=14, leading=14))
+
+        elements = []
+
+        # Header
+        elements.append(Paragraph(f"Calendario Semanal", styles['BrandTitle']))
+        elements.append(Paragraph(f"{perfil['nombre_negocio']} &mdash; Generado con Esteticai", styles['SubTitle']))
+        elements.append(Spacer(1, 4*mm))
+
+        # Estrategia
+        estrategia = cal.get("estrategia_semanal") or cal.get("estrategia", "")
+        if estrategia:
+            elements.append(Paragraph(f"<b>Estrategia de la semana:</b> {estrategia}", styles['StrategyBox']))
+
+        # Publicaciones
+        pubs = cal.get("calendario_semanal") or cal.get("publicaciones", [])
+        for pub in pubs:
+            dia = pub.get("dia", "")
+            hora = pub.get("hora_publicacion") or pub.get("hora", "")
+            red = pub.get("red_social", "")
+            formato = pub.get("formato", "")
+            tipo = pub.get("tipo_contenido") or pub.get("tipo", "")
+            copy = pub.get("copy", "")
+            hashtags = pub.get("hashtags", "")
+            cta = pub.get("cta", "")
+
+            elements.append(Paragraph(f"{dia}", styles['DayTitle']))
+            meta_parts = [p for p in [hora, red, formato, tipo] if p]
+            elements.append(Paragraph(" &bull; ".join(meta_parts), styles['MetaText']))
+
+            if copy:
+                # Escapar caracteres especiales para ReportLab
+                copy_clean = copy.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                elements.append(Paragraph(copy_clean, styles['CopyText']))
+
+            if hashtags:
+                if isinstance(hashtags, list):
+                    hashtags = " ".join(hashtags)
+                elements.append(Paragraph(hashtags, styles['MetaText']))
+
+            if cta:
+                elements.append(Paragraph(f"CTA: {cta}", styles['MetaText']))
+
+            elements.append(Spacer(1, 3*mm))
+
+        # Consejo
+        consejo = cal.get("consejo_de_la_semana") or cal.get("consejo", "")
+        if consejo:
+            elements.append(Spacer(1, 4*mm))
+            elements.append(Paragraph(f"<b>Consejo de la semana:</b> {consejo}", styles['StrategyBox']))
+
+        # Footer
+        elements.append(Spacer(1, 8*mm))
+        elements.append(Paragraph("Generado con Esteticai &mdash; esteticai.com", styles['MetaText']))
+
+        doc.build(elements)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+
+        import base64
+        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+        return JSONResponse({
+            "ok": True,
+            "pdf_base64": f"data:application/pdf;base64,{pdf_b64}",
+            "filename": f"calendario_{perfil['nombre_negocio'].replace(' ', '_')}.pdf"
+        })
+
+    except Exception as e:
+        print(f"[ERROR] PDF calendario: {e}")
+        return JSONResponse({"error": "No se pudo generar el PDF"}, status_code=500)
 
 
 # ============================================================
