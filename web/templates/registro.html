@@ -8,6 +8,7 @@
         <div class="alert alert-error">{{ error }}</div>
         {% endif %}
         <form method="post" action="/registro">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="nombre">Tu nombre</label>
                 <input type="text" id="nombre" name="nombre" required placeholder="Ej: Laura Mart&iacute;nez">
@@ -18,7 +19,11 @@
             </div>
             <div class="form-group">
                 <label for="password">Contrase&ntilde;a</label>
-                <input type="password" id="password" name="password" required minlength="6" placeholder="M&iacute;nimo 6 caracteres">
+                <input type="password" id="password" name="password" required minlength="6" placeholder="M&iacute;nimo 6 caracteres" oninput="evaluarPassword(this.value)">
+                <div class="password-strength" id="password-strength" style="display:none;">
+                    <div class="password-bar"><div class="password-fill" id="password-fill"></div></div>
+                    <span class="password-label" id="password-label"></span>
+                </div>
             </div>
             <div class="form-group">
                 <label class="checkbox-label" style="font-size:13px; color:var(--gris);">

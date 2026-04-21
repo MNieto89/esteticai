@@ -40,6 +40,10 @@ from agents.image_engine import generar_imagen_automatica, generar_prompt_automa
 from agents.video_engine import generar_video_desde_imagen, MOVIMIENTOS_VIDEO, MOVIMIENTO_RECOMENDADO
 from agents.photo_engine import procesar_foto_tratamiento, subir_imagen_a_fal, FONDOS_PROFESIONALES, obtener_fondos_disponibles
 from agents.composer_engine import componer_antes_despues, obtener_plantillas_disponibles, PLANTILLA_INFO
+from web.email_service import (
+    enviar_reset_password, enviar_verificacion_email,
+    enviar_bienvenida, enviar_cuenta_eliminada,
+)
 
 import sqlite3
 
@@ -73,8 +77,81 @@ if IS_PRODUCTION:
     allowed_hosts = os.environ.get("ALLOWED_HOSTS", "esteticai.com,*.up.railway.app").split(",")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in allowed_hosts])
 
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+# Archivos estáticos con cache headers
+from starlette.staticfiles import StaticFiles as _StaticFiles
+
+class CachedStaticFiles(_StaticFiles):
+    """StaticFiles con cache-control headers para producción."""
+    async def __call__(self, scope, receive, send):
+        async def _send_with_cache(message):
+            if message["type"] == "http.response.start":
+                headers = dict(message.get("headers", []))
+                # Cache 1 día en producción, no cache en desarrollo
+                cache_val = b"public, max-age=86400" if IS_PRODUCTION else b"no-cache"
+                headers[b"cache-control"] = cache_val
+                message["headers"] = list(headers.items())
+            await send(message)
+        await super().__call__(scope, receive, _send_with_cache)
+
+app.mount("/static", CachedStaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+# ============================================================
+# CSRF PROTECTION
+# ============================================================
+
+def generar_csrf_token(request: Request):
+    """Genera o recupera el token CSRF de la sesión."""
+    if "csrf_token" not in request.session:
+        request.session["csrf_token"] = secrets.token_hex(32)
+    return request.session["csrf_token"]
+
+
+# Rutas de formularios HTML que requieren validación CSRF
+CSRF_FORM_ROUTES = {"/login", "/registro", "/perfil/crear", "/perfil/editar", "/recuperar", "/cuenta/eliminar"}
+# Rutas con prefijo (para /reset/{token})
+CSRF_PREFIX_ROUTES = ["/reset/"]
+
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    """Middleware CSRF: valida token en POSTs de formularios HTML."""
+    if request.method == "POST":
+        content_type = request.headers.get("content-type", "")
+        # Solo validar formularios HTML (no API JSON)
+        es_form = "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type
+        ruta = request.url.path
+        es_ruta_csrf = ruta in CSRF_FORM_ROUTES or any(ruta.startswith(p) for p in CSRF_PREFIX_ROUTES)
+
+        if es_form and es_ruta_csrf:
+            # Leer form sin consumir el body (necesario para que el handler lo lea después)
+            form = await request.form()
+            token_form = form.get("csrf_token", "")
+            token_sesion = request.session.get("csrf_token", "")
+            if not token_sesion or not token_form or token_sesion != token_form:
+                logger.warning("CSRF validation failed for %s from %s",
+                               ruta, request.client.host if request.client else "unknown")
+                return templates.TemplateResponse(request, "error.html", context={
+                    "titulo": "Error de seguridad",
+                    "mensaje": "Token de seguridad inv\u00e1lido. Recarga la p\u00e1gina e int\u00e9ntalo de nuevo.",
+                    "icono": "&#128274;",
+                }, status_code=403)
+
+    response = await call_next(request)
+    return response
+
+
+# Inyectar csrf_token en todos los contextos de Jinja2
+# Sobreescribimos TemplateResponse para añadirlo automáticamente
+_original_template_response = templates.TemplateResponse
+
+def _csrf_template_response(request, name, context=None, status_code=200, **kwargs):
+    ctx = context or {}
+    ctx.setdefault("csrf_token", generar_csrf_token(request))
+    return _original_template_response(request, name, context=ctx, status_code=status_code, **kwargs)
+
+templates.TemplateResponse = _csrf_template_response
 
 
 # Security headers middleware
@@ -268,6 +345,14 @@ def init_db():
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         );
 
+        CREATE TABLE IF NOT EXISTS email_verificaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            token TEXT UNIQUE NOT NULL,
+            usado INTEGER DEFAULT 0,
+            creado_en TEXT DEFAULT (datetime('now'))
+        );
+
         CREATE TABLE IF NOT EXISTS generaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario_id INTEGER NOT NULL,
@@ -297,6 +382,11 @@ def init_db():
         db.execute("ALTER TABLE usuarios ADD COLUMN trial_ends_at TEXT DEFAULT ''")
         db.execute("ALTER TABLE usuarios ADD COLUMN stripe_customer_id TEXT DEFAULT ''")
         db.execute("ALTER TABLE usuarios ADD COLUMN stripe_subscription_id TEXT DEFAULT ''")
+    # Migracion: email_verificado en usuarios
+    try:
+        db.execute("SELECT email_verificado FROM usuarios LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE usuarios ADD COLUMN email_verificado INTEGER DEFAULT 0")
     db.commit()
     db.close()
 
@@ -663,20 +753,122 @@ async def registro_submit(request: Request, nombre: str = Form(...),
         })
     trial_ends = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
-        "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at) VALUES (?, ?, ?, 'trial', ?)",
+        "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at, email_verificado) VALUES (?, ?, ?, 'trial', ?, 0)",
         (email, hash_password(password), nombre, trial_ends)
     )
     db.commit()
     user = db.execute("SELECT id FROM usuarios WHERE email = ?", (email,)).fetchone()
+
+    # Crear token de verificación y enviar email
+    verify_token = secrets.token_urlsafe(32)
+    db.execute("INSERT INTO email_verificaciones (email, token) VALUES (?, ?)",
+               (email, verify_token))
+    db.commit()
     db.close()
+
+    verify_link = f"/verificar/{verify_token}"
+    email_enviado = enviar_verificacion_email(email, nombre, verify_link)
+
     request.session["user_id"] = user["id"]
-    return RedirectResponse("/perfil/crear", status_code=303)
+
+    if email_enviado:
+        # Redirigir a página de "verifica tu email"
+        return RedirectResponse("/verificar-pendiente", status_code=303)
+    else:
+        # Sin servicio de email: auto-verificar y continuar
+        with db_connection() as dbc:
+            dbc.execute("UPDATE usuarios SET email_verificado = 1 WHERE id = ?", (user["id"],))
+        return RedirectResponse("/perfil/crear", status_code=303)
 
 
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+# ============================================================
+# VERIFICACION DE EMAIL
+# ============================================================
+
+@app.get("/verificar-pendiente", response_class=HTMLResponse)
+async def verificar_pendiente_page(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    if user["email_verificado"]:
+        return RedirectResponse("/dashboard", status_code=303)
+    return templates.TemplateResponse(request, "verificar_pendiente.html", context={
+        "user": user,
+    })
+
+
+@app.get("/verificar/{token}")
+async def verificar_email(request: Request, token: str):
+    db = get_db()
+    verificacion = db.execute(
+        "SELECT * FROM email_verificaciones WHERE token = ? AND usado = 0", (token,)
+    ).fetchone()
+    if not verificacion:
+        db.close()
+        return templates.TemplateResponse(request, "error.html", context={
+            "titulo": "Enlace inv\u00e1lido",
+            "mensaje": "El enlace de verificaci\u00f3n no es v\u00e1lido o ya fue usado.",
+            "icono": "&#128274;",
+        }, status_code=400)
+
+    # Verificar que no tenga más de 24 horas
+    creado = datetime.strptime(verificacion["creado_en"], "%Y-%m-%d %H:%M:%S")
+    if (datetime.utcnow() - creado).total_seconds() > 86400:
+        db.close()
+        return templates.TemplateResponse(request, "error.html", context={
+            "titulo": "Enlace expirado",
+            "mensaje": "El enlace ha expirado (m\u00e1ximo 24 horas). Inicia sesi\u00f3n para solicitar uno nuevo.",
+            "icono": "&#9202;",
+        }, status_code=400)
+
+    email = verificacion["email"]
+    db.execute("UPDATE email_verificaciones SET usado = 1 WHERE token = ?", (token,))
+    db.execute("UPDATE usuarios SET email_verificado = 1 WHERE email = ?", (email,))
+    db.commit()
+
+    user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
+    db.close()
+
+    if user:
+        enviar_bienvenida(email, user["nombre"])
+        request.session["user_id"] = user["id"]
+
+    # Redirigir a perfil si no tiene, o al dashboard
+    perfil = get_perfil_activo(user["id"]) if user else None
+    if user and not perfil:
+        return RedirectResponse("/perfil/crear", status_code=303)
+    return RedirectResponse("/dashboard", status_code=303)
+
+
+@app.post("/reenviar-verificacion")
+async def reenviar_verificacion(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if user["email_verificado"]:
+        return JSONResponse({"ok": True, "msg": "Ya verificado"})
+
+    # Invalidar tokens anteriores y crear uno nuevo
+    with db_connection() as db:
+        db.execute("UPDATE email_verificaciones SET usado = 1 WHERE email = ? AND usado = 0",
+                   (user["email"],))
+        verify_token = secrets.token_urlsafe(32)
+        db.execute("INSERT INTO email_verificaciones (email, token) VALUES (?, ?)",
+                   (user["email"], verify_token))
+
+    verify_link = f"/verificar/{verify_token}"
+    enviado = enviar_verificacion_email(user["email"], user["nombre"], verify_link)
+    if enviado:
+        return JSONResponse({"ok": True, "msg": "Email de verificaci\u00f3n reenviado"})
+    else:
+        return JSONResponse({"ok": False, "msg": "No se pudo enviar. Configura RESEND_API_KEY.",
+                             "verify_link": verify_link})
 
 
 # ============================================================
@@ -708,13 +900,21 @@ async def recuperar_submit(request: Request, email: str = Form(...)):
     db.execute("INSERT INTO password_resets (email, token) VALUES (?, ?)", (email, token))
     db.commit()
     db.close()
-    # En producción: enviar email con el enlace
-    # Por ahora: mostrar enlace directamente (modo desarrollo/demo)
+    # Enviar email con enlace de reset
     reset_link = f"/reset/{token}"
-    return templates.TemplateResponse(request, "recuperar.html", context={
-        "error": None, "reset_link": reset_link,
-        "success": "Enlace de recuperaci\u00f3n generado. En producci\u00f3n se enviar\u00e1 por email."
-    })
+    email_enviado = enviar_reset_password(email, user["nombre"], reset_link)
+
+    if email_enviado:
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": None, "reset_link": None,
+            "success": "Te hemos enviado un email con el enlace para restablecer tu contrase\u00f1a. Revisa tambi\u00e9n la carpeta de spam."
+        })
+    else:
+        # Fallback dev mode: mostrar enlace directamente
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": None, "reset_link": reset_link,
+            "success": "Enlace generado. Configura RESEND_API_KEY para enviarlo por email."
+        })
 
 
 @app.get("/reset/{token}", response_class=HTMLResponse)
@@ -780,6 +980,9 @@ async def dashboard(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
+    # Verificación de email pendiente (solo si hay servicio de email activo)
+    if not user.get("email_verificado") and os.environ.get("RESEND_API_KEY"):
+        return RedirectResponse("/verificar-pendiente", status_code=303)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return RedirectResponse("/perfil/crear", status_code=303)
@@ -955,6 +1158,169 @@ async def perfil_editar_submit(request: Request):
     db.commit()
     db.close()
     return RedirectResponse("/dashboard", status_code=303)
+
+
+# ============================================================
+# PANEL DE ADMINISTRACION
+# ============================================================
+
+ADMIN_EMAILS = set(
+    e.strip() for e in os.environ.get("ADMIN_EMAILS", "mrt.niet@gmail.com").split(",") if e.strip()
+)
+
+
+def es_admin(user):
+    """Verifica si el usuario es administrador."""
+    return user and user["email"] in ADMIN_EMAILS
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_panel(request: Request):
+    user = get_usuario_actual(request)
+    if not user or not es_admin(user):
+        raise HTTPException(status_code=404)
+
+    db = get_db()
+    # Usuarios con conteo de generaciones
+    usuarios = db.execute("""
+        SELECT u.*, COUNT(g.id) as gen_count
+        FROM usuarios u
+        LEFT JOIN generaciones g ON g.usuario_id = u.id
+        GROUP BY u.id
+        ORDER BY u.creado_en DESC
+    """).fetchall()
+
+    # Stats generales
+    total_gen = db.execute("SELECT COUNT(*) as c FROM generaciones").fetchone()["c"]
+    verificados = db.execute("SELECT COUNT(*) as c FROM usuarios WHERE email_verificado = 1").fetchone()["c"]
+
+    # Generaciones recientes
+    generaciones_recientes = db.execute("""
+        SELECT g.tipo, g.creado_en, u.nombre
+        FROM generaciones g
+        JOIN usuarios u ON u.id = g.usuario_id
+        ORDER BY g.creado_en DESC LIMIT 30
+    """).fetchall()
+
+    db.close()
+
+    # Conteo por plan
+    por_plan = {}
+    for u in usuarios:
+        plan = u["plan"] or "trial"
+        por_plan[plan] = por_plan.get(plan, 0) + 1
+
+    stats = {
+        "total_usuarios": len(usuarios),
+        "verificados": verificados,
+        "total_generaciones": total_gen,
+        "por_plan": por_plan,
+    }
+
+    return templates.TemplateResponse(request, "admin.html", context={
+        "user": user, "usuarios": usuarios, "stats": stats,
+        "generaciones_recientes": generaciones_recientes,
+    })
+
+
+# ============================================================
+# ELIMINAR CUENTA (RGPD - Derecho de supresión)
+# ============================================================
+
+@app.get("/cuenta/eliminar", response_class=HTMLResponse)
+async def eliminar_cuenta_page(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(request, "eliminar_cuenta.html", context={
+        "user": user, "error": None,
+    })
+
+
+@app.post("/cuenta/eliminar")
+async def eliminar_cuenta_submit(request: Request, password: str = Form(...)):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    # Verificar contraseña
+    if not verificar_password(password, user["password_hash"]):
+        return templates.TemplateResponse(request, "eliminar_cuenta.html", context={
+            "user": user,
+            "error": "Contrase\u00f1a incorrecta. No se ha eliminado nada.",
+        })
+
+    user_id = user["id"]
+    user_email = user["email"]
+    user_nombre = user["nombre"]
+
+    # Eliminar todos los datos del usuario
+    with db_connection() as db:
+        db.execute("DELETE FROM generaciones WHERE usuario_id = ?", (user_id,))
+        db.execute("DELETE FROM uso_mensual WHERE usuario_id = ?", (user_id,))
+        db.execute("DELETE FROM perfiles WHERE usuario_id = ?", (user_id,))
+        db.execute("DELETE FROM password_resets WHERE email = ?", (user_email,))
+        db.execute("DELETE FROM email_verificaciones WHERE email = ?", (user_email,))
+        db.execute("DELETE FROM usuarios WHERE id = ?", (user_id,))
+
+    logger.info("Account deleted: user %s (%s)", user_id, user_email)
+
+    # Limpiar sesión
+    request.session.clear()
+
+    # Enviar email de confirmación
+    enviar_cuenta_eliminada(user_email, user_nombre)
+
+    return templates.TemplateResponse(request, "error.html", context={
+        "titulo": "Cuenta eliminada",
+        "mensaje": "Tu cuenta y todos tus datos han sido eliminados permanentemente. Gracias por haber usado Esteticai.",
+        "icono": "&#128075;",
+    })
+
+
+# ============================================================
+# EXPORTAR DATOS PERSONALES (RGPD - Derecho de portabilidad)
+# ============================================================
+
+@app.get("/cuenta/exportar-datos")
+async def exportar_datos(request: Request):
+    """Exporta todos los datos del usuario en JSON (RGPD Art. 20)."""
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    db = get_db()
+    perfil = get_perfil_activo(user["id"])
+    generaciones = db.execute(
+        "SELECT tipo, contenido, imagen_url, video_url, metadata, creado_en FROM generaciones WHERE usuario_id = ? ORDER BY creado_en DESC",
+        (user["id"],)
+    ).fetchall()
+    uso = db.execute(
+        "SELECT anio, mes, copys, imagenes, videos, fotos, composiciones, calendarios FROM uso_mensual WHERE usuario_id = ?",
+        (user["id"],)
+    ).fetchall()
+    db.close()
+
+    datos = {
+        "usuario": {
+            "nombre": user["nombre"],
+            "email": user["email"],
+            "plan": user.get("plan", ""),
+            "creado_en": user["creado_en"],
+            "email_verificado": bool(user.get("email_verificado")),
+        },
+        "perfil": perfil if perfil else None,
+        "generaciones": [dict(g) for g in generaciones],
+        "uso_mensual": [dict(u) for u in uso],
+        "exportado_en": datetime.utcnow().isoformat(),
+    }
+
+    return JSONResponse(
+        datos,
+        headers={
+            "Content-Disposition": f'attachment; filename="esteticai_datos_{user["email"]}.json"',
+        }
+    )
 
 
 # ============================================================

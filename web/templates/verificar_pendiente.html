@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Verifica tu email - Esteticai{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card" style="text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">&#9993;</div>
+        <h2>Verifica tu email</h2>
+        <p class="auth-desc">
+            Hemos enviado un enlace de verificaci&oacute;n a
+            <strong>{{ user.email }}</strong>.
+            Revisa tu bandeja de entrada (y la carpeta de spam).
+        </p>
+        <div id="reenviar-msg" style="margin-top:16px;"></div>
+        <div style="margin-top:24px;">
+            <button class="btn btn-secondary btn-full" onclick="reenviarVerificacion()" id="btn-reenviar">
+                Reenviar email de verificaci&oacute;n
+            </button>
+        </div>
+        <p style="margin-top:16px; font-size:13px; color:var(--gris);">
+            El enlace expira en 24 horas.
+        </p>
+        <p class="auth-link"><a href="/logout">Salir</a></p>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function reenviarVerificacion() {
+    const btn = document.getElementById('btn-reenviar');
+    const msgDiv = document.getElementById('reenviar-msg');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    try {
+        const res = await fetch('/reenviar-verificacion', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+            msgDiv.innerHTML = '<div class="alert alert-success">Email reenviado. Revisa tu bandeja.</div>';
+        } else if (data.verify_link) {
+            msgDiv.innerHTML = '<div class="alert alert-info">Sin servicio de email. <a href="' + data.verify_link + '" style="color:var(--rosa);font-weight:600;">Verificar manualmente</a></div>';
+        } else {
+            msgDiv.innerHTML = '<div class="alert alert-error">' + (data.msg || 'Error al reenviar') + '</div>';
+        }
+    } catch(e) {
+        msgDiv.innerHTML = '<div class="alert alert-error">Error de conexion</div>';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Reenviar email de verificacion';
+}
+</script>
+{% endblock %}

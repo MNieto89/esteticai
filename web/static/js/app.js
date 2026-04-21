@@ -870,6 +870,43 @@ async function exportarCalendarioPDF() {
 // HISTORIAL - FILTROS
 // ============================================================
 
+// ============================================================
+// INDICADOR DE FORTALEZA DE CONTRASEÑA
+// ============================================================
+
+function evaluarPassword(password) {
+    const strengthDiv = document.getElementById('password-strength');
+    const fill = document.getElementById('password-fill');
+    const label = document.getElementById('password-label');
+    if (!strengthDiv || !fill || !label) return;
+
+    if (!password) { strengthDiv.style.display = 'none'; return; }
+    strengthDiv.style.display = 'flex';
+
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    const levels = [
+        { min: 0, max: 1, pct: 15, color: '#e74c3c', text: 'Muy d\u00e9bil' },
+        { min: 2, max: 2, pct: 35, color: '#e67e22', text: 'D\u00e9bil' },
+        { min: 3, max: 3, pct: 55, color: '#f1c40f', text: 'Aceptable' },
+        { min: 4, max: 4, pct: 75, color: '#27ae60', text: 'Buena' },
+        { min: 5, max: 6, pct: 100, color: '#27ae60', text: 'Fuerte' },
+    ];
+
+    const level = levels.find(l => score >= l.min && score <= l.max) || levels[0];
+    fill.style.width = level.pct + '%';
+    fill.style.background = level.color;
+    label.textContent = level.text;
+    label.style.color = level.color;
+}
+
+
 function filtrarHistorial(tipo, btn) {
     // Actualizar botones activos
     document.querySelectorAll('.historial-filtro').forEach(b => b.classList.remove('active'));

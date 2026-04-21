@@ -13,12 +13,13 @@
         {% endif %}
         {% if reset_link %}
         <div class="alert alert-info">
-            <strong>Modo desarrollo:</strong> En producci&oacute;n este enlace se enviar&iacute;a por email.<br>
+            <strong>Modo sin email:</strong> Configura RESEND_API_KEY para enviar por email.<br>
             <a href="{{ reset_link }}" style="color: var(--rosa); font-weight: 600;">Restablecer contrase&ntilde;a</a>
         </div>
         {% endif %}
         {% if not reset_link %}
         <form method="post" action="/recuperar">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="email">Email de tu cuenta</label>
                 <input type="email" id="email" name="email" required placeholder="tu@email.com">

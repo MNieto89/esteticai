@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Eliminar cuenta - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar">
+    <div class="nav-brand">Esteticai</div>
+    <div class="nav-actions">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/logout" class="nav-link">Salir</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h2 style="color:var(--error);">Eliminar mi cuenta</h2>
+        <p class="auth-desc">
+            Esta acci&oacute;n es <strong>permanente e irreversible</strong>.
+            Se eliminar&aacute;n todos tus datos:
+        </p>
+        <ul style="font-size:14px; color:var(--gris); line-height:2; margin:16px 0;">
+            <li>Tu perfil y datos de negocio</li>
+            <li>Todas las generaciones (copys, im&aacute;genes, videos, calendarios)</li>
+            <li>Tu historial de uso</li>
+            <li>Tu cuenta y datos personales</li>
+        </ul>
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="/cuenta/eliminar">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label for="password">Confirma tu contrase&ntilde;a para eliminar</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="Tu contrase&ntilde;a actual">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label" style="font-size:13px; color:var(--error);">
+                    <input type="checkbox" name="confirmar" required>
+                    Entiendo que esta acci&oacute;n es irreversible y quiero eliminar mi cuenta
+                </label>
+            </div>
+            <button type="submit" class="btn btn-full"
+                    style="background:var(--error); color:white; border:none;">
+                Eliminar mi cuenta permanentemente
+            </button>
+        </form>
+        <div style="margin-top:16px; text-align:center;">
+            <a href="/perfil/editar" style="color:var(--gris); font-size:13px;">Cancelar y volver</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

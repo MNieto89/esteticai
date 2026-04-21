@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Admin - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar">
+    <div class="nav-brand">Esteticai <span style="font-size:12px; color:var(--rosa);">ADMIN</span></div>
+    <div class="nav-actions">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/logout" class="nav-link">Salir</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <div class="dash-header">
+        <h1>Panel de administraci&oacute;n</h1>
+        <p>{{ stats.total_usuarios }} usuarios &middot; {{ stats.verificados }} verificados &middot; {{ stats.total_generaciones }} generaciones</p>
+    </div>
+
+    <!-- RESUMEN POR PLAN -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:32px;">
+        {% for plan_id, count in stats.por_plan.items() %}
+        <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ count }}</div>
+            <div style="font-size:13px; color:var(--gris);">{{ plan_id|capitalize }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- TABLA DE USUARIOS -->
+    <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06); overflow-x:auto;">
+        <h2 style="margin-top:0; font-size:18px;">Usuarios ({{ stats.total_usuarios }})</h2>
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <thead>
+                <tr style="border-bottom:2px solid #eee; text-align:left;">
+                    <th style="padding:8px;">ID</th>
+                    <th style="padding:8px;">Nombre</th>
+                    <th style="padding:8px;">Email</th>
+                    <th style="padding:8px;">Plan</th>
+                    <th style="padding:8px;">Verificado</th>
+                    <th style="padding:8px;">Registro</th>
+                    <th style="padding:8px;">Generaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:8px;">{{ u.id }}</td>
+                    <td style="padding:8px;">{{ u.nombre }}</td>
+                    <td style="padding:8px; font-size:13px;">{{ u.email }}</td>
+                    <td style="padding:8px;"><span class="plan-badge plan-badge-{{ u.plan or 'trial' }}" style="font-size:11px;">{{ u.plan or 'trial' }}</span></td>
+                    <td style="padding:8px;">{% if u.email_verificado %}&#9989;{% else %}&#10060;{% endif %}</td>
+                    <td style="padding:8px; font-size:12px; color:var(--gris);">{{ u.creado_en[:10] if u.creado_en else '' }}</td>
+                    <td style="padding:8px; text-align:center;">{{ u.gen_count or 0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- GENERACIONES RECIENTES -->
+    <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-top:20px; overflow-x:auto;">
+        <h2 style="margin-top:0; font-size:18px;">Generaciones recientes</h2>
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+            <thead>
+                <tr style="border-bottom:2px solid #eee; text-align:left;">
+                    <th style="padding:8px;">Fecha</th>
+                    <th style="padding:8px;">Usuario</th>
+                    <th style="padding:8px;">Tipo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in generaciones_recientes %}
+                <tr style="border-bottom:1px solid #f0f0f0;">
+                    <td style="padding:8px; font-size:12px; color:var(--gris);">{{ g.creado_en[:16].replace('T', ' ') if g.creado_en else '' }}</td>
+                    <td style="padding:8px;">{{ g.nombre }}</td>
+                    <td style="padding:8px;"><span class="copy-tag">{{ g.tipo }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
