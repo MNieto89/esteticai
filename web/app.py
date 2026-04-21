@@ -10,9 +10,21 @@ import sys
 import json
 import hashlib
 import secrets
+import logging
 import bcrypt
 from datetime import datetime, timedelta
 from pathlib import Path
+
+# ============================================================
+# LOGGING
+# ============================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("esteticai")
 
 from fastapi import FastAPI, Request, HTTPException, Depends, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -44,9 +56,37 @@ else:
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app = FastAPI(title="Esteticai", version="1.0")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# Seguridad: HTTPS y cookies seguras en producción
+IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    https_only=IS_PRODUCTION,
+    same_site="lax",
+    max_age=86400 * 7,  # 7 días
+)
+
+# Trusted Host en producción para prevenir host header attacks
+if IS_PRODUCTION:
+    from starlette.middleware.trustedhost import TrustedHostMiddleware
+    allowed_hosts = os.environ.get("ALLOWED_HOSTS", "esteticai.com,*.up.railway.app").split(",")
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in allowed_hosts])
+
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 # ============================================================
@@ -85,6 +125,30 @@ def check_rate_limit(user_id, endpoint):
         return False
     _rate_limits[user_id][endpoint].append(now)
     return True
+
+
+# ============================================================
+# ERROR HANDLERS
+# ============================================================
+
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    return templates.TemplateResponse(request, "error.html", context={
+        "titulo": "P\u00e1gina no encontrada",
+        "mensaje": "La p\u00e1gina que buscas no existe o ha sido movida.",
+        "icono": "&#128269;",
+    }, status_code=404)
+
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, exc):
+    return templates.TemplateResponse(request, "error.html", context={
+        "titulo": "Error del servidor",
+        "mensaje": "Algo ha ido mal. Int\u00e9ntalo de nuevo en unos minutos.",
+        "icono": "&#9888;&#65039;",
+    }, status_code=500)
 
 
 # Health check para verificar que la app arranca
@@ -133,6 +197,22 @@ def get_db():
     db = sqlite3.connect(str(DB_PATH))
     db.row_factory = sqlite3.Row
     return db
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def db_connection():
+    """Context manager para conexiones DB. Usa: with db_connection() as db: ..."""
+    db = get_db()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 def init_db():
@@ -321,16 +401,13 @@ def incrementar_uso(user_id, tipo_gen):
     if not campo:
         return
     now = datetime.utcnow()
-    db = get_db()
-    # Upsert: insertar si no existe, incrementar si existe
-    db.execute(f"""
-        INSERT INTO uso_mensual (usuario_id, anio, mes, {campo})
-        VALUES (?, ?, ?, 1)
-        ON CONFLICT(usuario_id, anio, mes)
-        DO UPDATE SET {campo} = {campo} + 1
-    """, (user_id, now.year, now.month))
-    db.commit()
-    db.close()
+    with db_connection() as db:
+        db.execute(f"""
+            INSERT INTO uso_mensual (usuario_id, anio, mes, {campo})
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(usuario_id, anio, mes)
+            DO UPDATE SET {campo} = {campo} + 1
+        """, (user_id, now.year, now.month))
 
 
 def verificar_limite_plan(user, tipo_gen):
@@ -419,11 +496,9 @@ def _migrar_password_si_legacy(user_id, password, stored_hash):
     """Si el hash es SHA256 legacy, actualiza a bcrypt en la DB."""
     if not (stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$")):
         nuevo_hash = hash_password(password)
-        db = get_db()
-        db.execute("UPDATE usuarios SET password_hash = ? WHERE id = ?",
-                   (nuevo_hash, user_id))
-        db.commit()
-        db.close()
+        with db_connection() as db:
+            db.execute("UPDATE usuarios SET password_hash = ? WHERE id = ?",
+                       (nuevo_hash, user_id))
 
 
 import re
@@ -505,13 +580,11 @@ def get_perfil_activo(user_id):
 
 def guardar_generacion(user_id, perfil_id, tipo, contenido=None,
                         imagen_url=None, video_url=None, metadata=None):
-    db = get_db()
-    db.execute(
-        "INSERT INTO generaciones (usuario_id, perfil_id, tipo, contenido, imagen_url, video_url, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, perfil_id, tipo, contenido, imagen_url, video_url, json.dumps(metadata or {}))
-    )
-    db.commit()
-    db.close()
+    with db_connection() as db:
+        db.execute(
+            "INSERT INTO generaciones (usuario_id, perfil_id, tipo, contenido, imagen_url, video_url, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (user_id, perfil_id, tipo, contenido, imagen_url, video_url, json.dumps(metadata or {}))
+        )
 
 
 # ============================================================
@@ -922,7 +995,7 @@ async def api_generar_copy(request: Request):
             return JSONResponse({"error": "API key no configurada. Contacta al administrador."}, status_code=500)
         if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
             return JSONResponse({"error": "La generaci\u00f3n tard\u00f3 demasiado. Int\u00e9ntalo de nuevo."}, status_code=500)
-        print(f"[ERROR] Copy: {error_msg}")
+        logger.error("Copy generation failed: %s", error_msg)
         return JSONResponse({"error": "No se pudo generar el copy. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
@@ -957,7 +1030,7 @@ async def api_generar_imagen(request: Request):
             incrementar_uso(user["id"], "imagen")
         return JSONResponse({"ok": True, "imagen": resultado})
     except Exception as e:
-        print(f"[ERROR] Imagen: {e}")
+        logger.error("Image generation failed: %s", e)
         return JSONResponse({"error": "No se pudo generar la imagen. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
@@ -994,7 +1067,7 @@ async def api_generar_video(request: Request):
         return JSONResponse({"ok": True, "video": resultado})
     except Exception as e:
         error_msg = str(e)
-        print(f"[ERROR] Video: {error_msg}")
+        logger.error("Video generation failed: %s", error_msg)
         if "timeout" in error_msg.lower():
             return JSONResponse({"error": "La generaci\u00f3n de video tard\u00f3 demasiado. Prueba con 5 segundos."}, status_code=500)
         return JSONResponse({"error": "No se pudo generar el video. Int\u00e9ntalo de nuevo."}, status_code=500)
@@ -1022,7 +1095,7 @@ async def api_generar_calendario(request: Request):
         incrementar_uso(user["id"], "calendario")
         return JSONResponse({"ok": True, "calendario": cal})
     except Exception as e:
-        print(f"[ERROR] Calendario: {e}")
+        logger.error("Calendar generation failed: %s", e)
         return JSONResponse({"error": "No se pudo generar el calendario. Int\u00e9ntalo de nuevo."}, status_code=500)
 
 
@@ -1138,7 +1211,7 @@ async def api_calendario_pdf(request: Request):
         })
 
     except Exception as e:
-        print(f"[ERROR] PDF calendario: {e}")
+        logger.error("PDF calendar export failed: %s", e)
         return JSONResponse({"error": "No se pudo generar el PDF"}, status_code=500)
 
 
@@ -1394,7 +1467,7 @@ async def api_crear_checkout(request: Request):
     except ImportError:
         return JSONResponse({"error": "Stripe no est\u00e1 instalado en el servidor."}, status_code=503)
     except Exception as e:
-        print(f"[ERROR] Stripe checkout: {e}")
+        logger.error("Stripe checkout failed: %s", e)
         return JSONResponse({"error": "Error al crear la sesi\u00f3n de pago."}, status_code=500)
 
 
@@ -1405,7 +1478,10 @@ async def upgrade_exito(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=303)
     # En producción el webhook actualiza el plan; esto es fallback de UX
-    return templates.TemplateResponse(request, "upgrade_exito.html", context={"user": user})
+    plan_info = get_info_plan_usuario(user)
+    return templates.TemplateResponse(request, "upgrade_exito.html", context={
+        "user": user, "plan_nombre": plan_info["plan_nombre"],
+    })
 
 
 @app.post("/stripe/webhook")
@@ -1436,7 +1512,7 @@ async def stripe_webhook(request: Request):
             )
             db.commit()
             db.close()
-            print(f"[STRIPE] Usuario {user_id} actualizado a plan {plan}")
+            logger.info("Stripe: user %s upgraded to plan %s", user_id, plan)
 
         elif event["type"] == "customer.subscription.deleted":
             subscription = event["data"]["object"]
@@ -1448,12 +1524,12 @@ async def stripe_webhook(request: Request):
             )
             db.commit()
             db.close()
-            print(f"[STRIPE] Suscripci\u00f3n {sub_id} cancelada, usuario bajado a free")
+            logger.info("Stripe: subscription %s cancelled, user downgraded to free", sub_id)
 
         return JSONResponse({"ok": True})
 
     except Exception as e:
-        print(f"[ERROR] Stripe webhook: {e}")
+        logger.error("Stripe webhook failed: %s", e)
         return JSONResponse({"error": str(e)}, status_code=400)
 
 
