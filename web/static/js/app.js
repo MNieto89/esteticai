@@ -6,6 +6,18 @@ let ultimaImagenUrl = null;
 
 
 // ============================================================
+// SANITIZACIÓN HTML (prevenir XSS en contenido generado por IA)
+// ============================================================
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+
+// ============================================================
 // ONBOARDING / TUTORIAL PRIMERA VEZ
 // ============================================================
 
@@ -273,33 +285,33 @@ async function generarCopy() {
         if (data.ok) {
             const copy = data.copy;
             if (copy.error) {
-                resultDiv.innerHTML = `<div>Error: ${copy.error}</div>`;
+                resultDiv.innerHTML = `<div>Error: ${escapeHtml(copy.error)}</div>`;
                 return;
             }
             let html = '';
 
-            // Copy principal (preservar saltos de linea)
-            const copyText = (copy.copy || '').replace(/\n/g, '<br>');
+            // Copy principal (preservar saltos de linea, escapar HTML)
+            const copyText = escapeHtml(copy.copy).replace(/\n/g, '<br>');
             html += `<div class="copy-texto">${copyText}</div>`;
 
             // Hashtags
             if (copy.hashtags && copy.hashtags.length > 0) {
-                html += `<div class="copy-hashtags">${copy.hashtags.join(' ')}</div>`;
+                html += `<div class="copy-hashtags">${copy.hashtags.map(h => escapeHtml(h)).join(' ')}</div>`;
             }
 
             // Meta info
             html += `<div class="copy-meta">`;
-            if (copy.formato_recomendado) html += `<span class="copy-tag">${copy.formato_recomendado}</span>`;
-            if (copy.red_social_ideal) html += `<span class="copy-tag">${copy.red_social_ideal}</span>`;
-            if (copy.hora_recomendada) html += `<span class="copy-tag">${copy.hora_recomendada}</span>`;
+            if (copy.formato_recomendado) html += `<span class="copy-tag">${escapeHtml(copy.formato_recomendado)}</span>`;
+            if (copy.red_social_ideal) html += `<span class="copy-tag">${escapeHtml(copy.red_social_ideal)}</span>`;
+            if (copy.hora_recomendada) html += `<span class="copy-tag">${escapeHtml(copy.hora_recomendada)}</span>`;
             html += `</div>`;
 
             // CTA
-            if (copy.cta) html += `<div class="copy-cta">${copy.cta}</div>`;
+            if (copy.cta) html += `<div class="copy-cta">${escapeHtml(copy.cta)}</div>`;
 
             // Nota para la clienta
             if (copy.nota_para_la_clienta) {
-                html += `<div class="copy-nota">${copy.nota_para_la_clienta}</div>`;
+                html += `<div class="copy-nota">${escapeHtml(copy.nota_para_la_clienta)}</div>`;
             }
 
             // Botones copiar y regenerar
@@ -310,10 +322,10 @@ async function generarCopy() {
 
             resultDiv.innerHTML = html;
         } else {
-            resultDiv.innerHTML = `<div>Error: ${data.error}</div>`;
+            resultDiv.innerHTML = `<div>Error: ${escapeHtml(data.error)}</div>`;
         }
     } catch (e) {
-        resultDiv.innerHTML = `<div>Error de conexion: ${e.message}</div>`;
+        resultDiv.innerHTML = `<div>Error de conexion: ${escapeHtml(e.message)}</div>`;
     } finally {
         desbloquearBoton('copy', btn);
     }
@@ -374,7 +386,7 @@ async function generarImagen() {
                 </div>`;
             }
         } else {
-            resultDiv.innerHTML = `<div class="error-msg">No se pudo generar la imagen. ${data.error || ''}</div>`;
+            resultDiv.innerHTML = `<div class="error-msg">No se pudo generar la imagen. ${escapeHtml(data.error || '')}</div>`;
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
@@ -455,7 +467,7 @@ async function generarVideo() {
                 </div>`;
             }
         } else {
-            resultDiv.innerHTML = `<div class="error-msg">No se pudo generar el video. ${data.error || ''}</div>`;
+            resultDiv.innerHTML = `<div class="error-msg">No se pudo generar el video. ${escapeHtml(data.error || '')}</div>`;
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
@@ -490,31 +502,32 @@ async function generarCalendario() {
             // Estrategia semanal
             const estrategia = cal.estrategia_semanal || cal.estrategia || '';
             if (estrategia) {
-                html += `<div class="cal-estrategia"><strong>Estrategia de la semana:</strong> ${estrategia}</div>`;
+                html += `<div class="cal-estrategia"><strong>Estrategia de la semana:</strong> ${escapeHtml(estrategia)}</div>`;
             }
 
             // Publicaciones (soporta ambos formatos)
             const pubs = cal.calendario_semanal || cal.publicaciones || [];
             if (pubs.length > 0) {
                 pubs.forEach(pub => {
-                    const hora = pub.hora_publicacion || pub.hora || '';
-                    const red = pub.red_social || '';
-                    const tipo = pub.tipo_contenido || pub.tipo || '';
-                    const formato = pub.formato || '';
+                    const hora = escapeHtml(pub.hora_publicacion || pub.hora || '');
+                    const red = escapeHtml(pub.red_social || '');
+                    const tipo = escapeHtml(pub.tipo_contenido || pub.tipo || '');
+                    const formato = escapeHtml(pub.formato || '');
 
                     html += `<div class="cal-dia">`;
                     html += `<div class="cal-dia-header">`;
-                    html += `<strong>${pub.dia || ''}</strong>`;
+                    html += `<strong>${escapeHtml(pub.dia || '')}</strong>`;
                     html += `<span class="cal-meta">${hora} · ${red} · ${formato}</span>`;
                     html += `</div>`;
                     if (tipo) html += `<span class="cal-tipo">${tipo}</span>`;
-                    html += `<div class="cal-copy">${pub.copy || ''}</div>`;
+                    html += `<div class="cal-copy">${escapeHtml(pub.copy || '')}</div>`;
                     if (pub.hashtags) {
-                        html += `<div class="hashtags">${Array.isArray(pub.hashtags) ? pub.hashtags.join(' ') : pub.hashtags}</div>`;
+                        const tags = Array.isArray(pub.hashtags) ? pub.hashtags.map(h => escapeHtml(h)).join(' ') : escapeHtml(pub.hashtags);
+                        html += `<div class="hashtags">${tags}</div>`;
                     }
-                    if (pub.cta) html += `<div class="cal-cta">${pub.cta}</div>`;
+                    if (pub.cta) html += `<div class="cal-cta">${escapeHtml(pub.cta)}</div>`;
                     if (pub.nota_para_la_clienta) {
-                        html += `<div class="cal-nota">${pub.nota_para_la_clienta}</div>`;
+                        html += `<div class="cal-nota">${escapeHtml(pub.nota_para_la_clienta)}</div>`;
                     }
                     html += `</div>`;
                 });
@@ -523,7 +536,7 @@ async function generarCalendario() {
             // Consejo de la semana
             const consejo = cal.consejo_de_la_semana || cal.consejo || '';
             if (consejo) {
-                html += `<div class="cal-consejo"><strong>Consejo de la semana:</strong> ${consejo}</div>`;
+                html += `<div class="cal-consejo"><strong>Consejo de la semana:</strong> ${escapeHtml(consejo)}</div>`;
             }
 
             // Botones regenerar y exportar PDF
@@ -537,7 +550,7 @@ async function generarCalendario() {
 
             resultDiv.innerHTML = html || '<div>Calendario generado (revisa la consola para detalles)</div>';
         } else {
-            resultDiv.innerHTML = `<div>Error: ${data.error || 'Error desconocido'}</div>`;
+            resultDiv.innerHTML = `<div>Error: ${escapeHtml(data.error || 'Error desconocido')}</div>`;
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
@@ -650,10 +663,10 @@ async function mejorarFoto() {
 
             resultDiv.innerHTML = html;
         } else {
-            resultDiv.innerHTML = `<div>Error: ${data.error || 'Error desconocido'}</div>`;
+            resultDiv.innerHTML = `<div>Error: ${escapeHtml(data.error || 'Error desconocido')}</div>`;
         }
     } catch (e) {
-        resultDiv.innerHTML = `<div>Error de conexion: ${e.message}</div>`;
+        resultDiv.innerHTML = `<div>Error de conexion: ${escapeHtml(e.message)}</div>`;
     }
 
     btn.disabled = false;
@@ -769,10 +782,10 @@ async function componerAntesDespues() {
             html += `</div>`;
             resultDiv.innerHTML = html;
         } else {
-            resultDiv.innerHTML = `<div>Error: ${data.error}</div>`;
+            resultDiv.innerHTML = `<div>Error: ${escapeHtml(data.error)}</div>`;
         }
     } catch (e) {
-        resultDiv.innerHTML = `<div>Error de conexion: ${e.message}</div>`;
+        resultDiv.innerHTML = `<div>Error de conexion: ${escapeHtml(e.message)}</div>`;
     }
 
     btn.disabled = false;
@@ -969,3 +982,38 @@ function filtrarHistorial(tipo, btn) {
         }
     });
 }
+
+
+// ============================================================
+// INDICADOR OFFLINE
+// ============================================================
+
+(function() {
+    let offlineBanner = null;
+
+    function crearBannerOffline() {
+        if (offlineBanner) return;
+        offlineBanner = document.createElement('div');
+        offlineBanner.id = 'offline-banner';
+        offlineBanner.setAttribute('role', 'alert');
+        offlineBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#e67e22;color:white;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;z-index:10001;transform:translateY(-100%);transition:transform 0.3s ease;';
+        offlineBanner.textContent = 'Sin conexi\u00f3n a internet — algunas funciones no estar\u00e1n disponibles';
+        document.body.appendChild(offlineBanner);
+        requestAnimationFrame(() => { offlineBanner.style.transform = 'translateY(0)'; });
+    }
+
+    function ocultarBannerOffline() {
+        if (!offlineBanner) return;
+        offlineBanner.style.transform = 'translateY(-100%)';
+        setTimeout(() => { if (offlineBanner) { offlineBanner.remove(); offlineBanner = null; } }, 300);
+    }
+
+    window.addEventListener('offline', crearBannerOffline);
+    window.addEventListener('online', () => {
+        ocultarBannerOffline();
+        mostrarToast('Conexi\u00f3n restaurada', 'success');
+    });
+
+    // Comprobar estado inicial
+    if (!navigator.onLine) crearBannerOffline();
+})();

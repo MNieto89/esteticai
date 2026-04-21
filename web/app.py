@@ -376,19 +376,27 @@ RATE_LIMITS = {
 
 
 def check_rate_limit(user_id, endpoint):
-    """Verifica si el usuario ha excedido el límite. Retorna True si OK, False si excedido."""
+    """Verifica si el usuario ha excedido el límite.
+    Retorna (allowed: bool, info: dict) con datos del rate limit."""
     if endpoint not in RATE_LIMITS:
-        return True
+        return True, {}
     max_req, window = RATE_LIMITS[endpoint]
     now = _time.time()
     # Limpiar timestamps viejos
     _rate_limits[user_id][endpoint] = [
         t for t in _rate_limits[user_id][endpoint] if now - t < window
     ]
-    if len(_rate_limits[user_id][endpoint]) >= max_req:
-        return False
+    current = len(_rate_limits[user_id][endpoint])
+    info = {
+        "X-RateLimit-Limit": str(max_req),
+        "X-RateLimit-Remaining": str(max(0, max_req - current - (0 if current >= max_req else 1))),
+        "X-RateLimit-Reset": str(int(now + window)),
+    }
+    if current >= max_req:
+        return False, info
     _rate_limits[user_id][endpoint].append(now)
-    return True
+    info["X-RateLimit-Remaining"] = str(max(0, max_req - current - 1))
+    return True, info
 
 
 # ---- Limpieza periódica de rate limits (evitar memory leak) ----
@@ -1820,6 +1828,9 @@ async def api_generar_copy(request: Request):
     ok, msg = verificar_limite_plan(user, "copy")
     if not ok:
         return JSONResponse({"error": msg}, status_code=429)
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/copy")
+    if not rl_ok:
+        return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -1839,7 +1850,7 @@ async def api_generar_copy(request: Request):
         guardar_generacion(user["id"], perfil["id"], "copy",
                           contenido=json.dumps(copy, ensure_ascii=False))
         incrementar_uso(user["id"], "copy")
-        return JSONResponse({"ok": True, "copy": copy})
+        return JSONResponse({"ok": True, "copy": copy}, headers=rl_info)
     except Exception as e:
         error_msg = str(e)
         if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
@@ -1858,6 +1869,9 @@ async def api_generar_imagen(request: Request):
     ok, msg = verificar_limite_plan(user, "imagen")
     if not ok:
         return JSONResponse({"error": msg}, status_code=429)
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/imagen")
+    if not rl_ok:
+        return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -1879,7 +1893,7 @@ async def api_generar_imagen(request: Request):
                               imagen_url=resultado.get("url") if not resultado.get("es_demo") else None,
                               metadata={"servicio": servicio, "tipo": tipo_pub, "es_demo": resultado.get("es_demo", False)})
             incrementar_uso(user["id"], "imagen")
-        return JSONResponse({"ok": True, "imagen": resultado})
+        return JSONResponse({"ok": True, "imagen": resultado}, headers=rl_info)
     except Exception as e:
         logger.error("Image generation failed: %s", e)
         return JSONResponse({"error": "No se pudo generar la imagen. Int\u00e9ntalo de nuevo."}, status_code=500)
@@ -1893,6 +1907,9 @@ async def api_generar_video(request: Request):
     ok, msg = verificar_limite_plan(user, "video")
     if not ok:
         return JSONResponse({"error": msg}, status_code=429)
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/video")
+    if not rl_ok:
+        return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
 
     data = await request.json()
     url_imagen = data.get("url_imagen", "")
@@ -1915,7 +1932,7 @@ async def api_generar_video(request: Request):
                               video_url=resultado.get("url"),
                               metadata={"movimiento": tipo_movimiento, "duracion": duracion})
             incrementar_uso(user["id"], "video")
-        return JSONResponse({"ok": True, "video": resultado})
+        return JSONResponse({"ok": True, "video": resultado}, headers=rl_info)
     except Exception as e:
         error_msg = str(e)
         logger.error("Video generation failed: %s", error_msg)
@@ -1932,6 +1949,9 @@ async def api_generar_calendario(request: Request):
     ok, msg = verificar_limite_plan(user, "calendario")
     if not ok:
         return JSONResponse({"error": msg}, status_code=429)
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/calendario")
+    if not rl_ok:
+        return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -1944,7 +1964,7 @@ async def api_generar_calendario(request: Request):
         guardar_generacion(user["id"], perfil["id"], "calendario",
                           contenido=json.dumps(cal, ensure_ascii=False))
         incrementar_uso(user["id"], "calendario")
-        return JSONResponse({"ok": True, "calendario": cal})
+        return JSONResponse({"ok": True, "calendario": cal}, headers=rl_info)
     except Exception as e:
         logger.error("Calendar generation failed: %s", e)
         return JSONResponse({"error": "No se pudo generar el calendario. Int\u00e9ntalo de nuevo."}, status_code=500)
@@ -2085,6 +2105,9 @@ async def api_mejorar_foto(
     ok, msg = verificar_limite_plan(user, "foto")
     if not ok:
         return JSONResponse({"error": msg}, status_code=429)
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/mejorar-foto")
+    if not rl_ok:
+        return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -2124,7 +2147,7 @@ async def api_mejorar_foto(
             },
         )
         incrementar_uso(user["id"], "foto")
-        return JSONResponse({"ok": True, "resultado": resultado})
+        return JSONResponse({"ok": True, "resultado": resultado}, headers=rl_info)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -2155,6 +2178,9 @@ async def api_componer_antes_despues(
     ok, msg = verificar_limite_plan(user, "composicion")
     if not ok:
         return JSONResponse({"error": msg}, status_code=429)
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/componer-antes-despues")
+    if not rl_ok:
+        return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -2202,7 +2228,7 @@ async def api_componer_antes_despues(
         )
 
         incrementar_uso(user["id"], "composicion")
-        return JSONResponse({"ok": True, "resultado": respuesta})
+        return JSONResponse({"ok": True, "resultado": respuesta}, headers=rl_info)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 

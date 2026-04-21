@@ -6,8 +6,13 @@
         <div style="font-size:48px; margin-bottom:16px;">{{ icono }}</div>
         <h2>{{ titulo }}</h2>
         <p class="auth-desc">{{ mensaje }}</p>
-        <div style="margin-top:24px;">
+        <div style="margin-top:24px; display:flex; flex-direction:column; gap:10px;">
+            {% if request.session.get('user_id') %}
+            <a href="/dashboard" class="btn btn-primary btn-full">Ir al dashboard</a>
+            {% else %}
             <a href="/" class="btn btn-primary btn-full">Volver al inicio</a>
+            {% endif %}
+            <a href="javascript:history.back()" style="color:var(--gris); font-size:13px;">Volver atr&aacute;s</a>
         </div>
     </div>
 </div>
