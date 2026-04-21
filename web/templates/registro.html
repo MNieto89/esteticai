@@ -11,15 +11,15 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="nombre">Tu nombre</label>
-                <input type="text" id="nombre" name="nombre" required placeholder="Ej: Laura Mart&iacute;nez" value="{{ nombre_value or '' }}">
+                <input type="text" id="nombre" name="nombre" required placeholder="Ej: Laura Mart&iacute;nez" value="{{ nombre_value or '' }}" autocomplete="name">
             </div>
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required placeholder="tu@email.com" value="{{ email_value or '' }}">
+                <input type="email" id="email" name="email" required placeholder="tu@email.com" value="{{ email_value or '' }}" autocomplete="email">
             </div>
             <div class="form-group">
                 <label for="password">Contrase&ntilde;a</label>
-                <input type="password" id="password" name="password" required minlength="6" placeholder="M&iacute;nimo 6 caracteres" oninput="evaluarPassword(this.value)">
+                <input type="password" id="password" name="password" required minlength="6" placeholder="M&iacute;nimo 6 caracteres" autocomplete="new-password" oninput="evaluarPassword(this.value)">
                 <div class="password-strength" id="password-strength" style="display:none;">
                     <div class="password-bar"><div class="password-fill" id="password-fill"></div></div>
                     <span class="password-label" id="password-label"></span>

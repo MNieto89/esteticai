@@ -37,7 +37,7 @@
     </div>
 
     <!-- DESGLOSE: PLANES + TIPOS -->
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px;">
+    <div class="admin-desglose">
         <div style="background:white; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris);">Por plan</h3>
             {% for plan_id, count in stats.por_plan.items() %}

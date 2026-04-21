@@ -1442,6 +1442,23 @@ body {
 .toast-success { background: var(--exito); }
 .toast-info { background: #3498db; }
 
+/* Admin desglose */
+.admin-desglose {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+    .problem-grid { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr 1fr; }
+    .precios-grid { grid-template-columns: 1fr; max-width: 400px; }
+    .faq-grid { grid-template-columns: 1fr; }
+    .admin-desglose { grid-template-columns: 1fr; }
+}
+
 /* Mobile */
 @media (max-width: 600px) {
     .hero-content h1 { font-size: 36px; }
@@ -1455,5 +1472,39 @@ body {
     .form-row { grid-template-columns: 1fr; }
     .precios-grid { grid-template-columns: 1fr; max-width: 400px; }
     .faq-grid { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
     .cookie-banner { flex-direction: column; text-align: center; }
+
+    /* Admin panel responsive */
+    .dashboard { padding: 16px 12px; }
+    .dash-header h1 { font-size: 22px; }
+    .dash-header p { font-size: 13px; }
+
+    /* Admin tables: horizontal scroll */
+    table { font-size: 13px; }
+    table th, table td { padding: 6px !important; }
+
+    /* Paginación móvil */
+    .paginacion { gap: 4px; }
+    .paginacion-btn { min-width: 32px; height: 32px; font-size: 13px; padding: 0 6px; }
+    .paginacion-dots { min-width: 28px; height: 32px; }
+
+    /* Historial grid móvil */
+    .historial-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Plan bar stack en móvil */
+    .plan-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .plan-usage { width: 100%; }
+
+    /* Footer stack */
+    .footer-content { flex-direction: column; text-align: center; }
+    .footer-links { justify-content: center; }
+}
+
+/* Very small screens */
+@media (max-width: 380px) {
+    .historial-grid { grid-template-columns: 1fr; }
+    .foto-comparacion { grid-template-columns: 1fr; }
+    .ad-uploads { grid-template-columns: 1fr; }
+    .hero-content h1 { font-size: 28px; }
 }

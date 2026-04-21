@@ -14,11 +14,11 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" required placeholder="tu@email.com" value="{{ email_value or '' }}">
+                <input type="email" id="email" name="email" required placeholder="tu@email.com" value="{{ email_value or '' }}" autocomplete="email">
             </div>
             <div class="form-group">
                 <label for="password">Contrase&ntilde;a</label>
-                <input type="password" id="password" name="password" required placeholder="Tu contrase&ntilde;a">
+                <input type="password" id="password" name="password" required placeholder="Tu contrase&ntilde;a" autocomplete="current-password">
             </div>
             <button type="submit" class="btn btn-primary btn-full">Entrar</button>
         </form>

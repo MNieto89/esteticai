@@ -31,7 +31,7 @@
             <div class="form-group">
                 <label for="password">Confirma tu contrase&ntilde;a para eliminar</label>
                 <input type="password" id="password" name="password" required
-                       placeholder="Tu contrase&ntilde;a actual">
+                       placeholder="Tu contrase&ntilde;a actual" autocomplete="current-password">
             </div>
             <div class="form-group">
                 <label class="checkbox-label" style="font-size:13px; color:var(--error);">
@@ -39,14 +39,66 @@
                     Entiendo que esta acci&oacute;n es irreversible y quiero eliminar mi cuenta
                 </label>
             </div>
-            <button type="submit" class="btn btn-full"
+            <button type="button" id="btn-eliminar" class="btn btn-full"
                     style="background:var(--error); color:white; border:none;">
                 Eliminar mi cuenta permanentemente
             </button>
         </form>
+
+        <!-- Modal de confirmación final -->
+        <div id="modal-eliminar" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+            <div style="background:white; border-radius:16px; padding:32px; max-width:400px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                <div style="font-size:48px; margin-bottom:12px;">&#9888;&#65039;</div>
+                <h3 style="color:var(--error); margin-bottom:8px;">&#191;Est&#225;s segura?</h3>
+                <p style="font-size:14px; color:var(--gris); margin-bottom:24px; line-height:1.5;">
+                    Se eliminar&#225;n todos tus datos de forma permanente. Esta acci&#243;n no se puede deshacer.
+                </p>
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button type="button" id="modal-cancelar" class="btn btn-secondary">Cancelar</button>
+                    <button type="button" id="modal-confirmar" class="btn" style="background:var(--error); color:white; border:none;">S&#237;, eliminar</button>
+                </div>
+            </div>
+        </div>
         <div style="margin-top:16px; text-align:center;">
             <a href="/perfil/editar" style="color:var(--gris); font-size:13px;">Cancelar y volver</a>
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+    const form = document.querySelector('form');
+    const btnEliminar = document.getElementById('btn-eliminar');
+    const modal = document.getElementById('modal-eliminar');
+    const modalCancelar = document.getElementById('modal-cancelar');
+    const modalConfirmar = document.getElementById('modal-confirmar');
+
+    btnEliminar.addEventListener('click', function() {
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        modal.style.display = 'flex';
+    });
+
+    modalCancelar.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+
+    modalConfirmar.addEventListener('click', function() {
+        form.submit();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        }
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+})();
+</script>
 {% endblock %}

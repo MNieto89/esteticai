@@ -488,6 +488,12 @@ async def sitemap_xml():
 def get_db():
     db = sqlite3.connect(str(DB_PATH))
     db.row_factory = sqlite3.Row
+    # Optimizaciones SQLite para producción
+    db.execute("PRAGMA journal_mode=WAL")         # Write-Ahead Logging: lecturas concurrentes
+    db.execute("PRAGMA busy_timeout=5000")         # Esperar 5s si la DB está ocupada
+    db.execute("PRAGMA synchronous=NORMAL")        # Balance seguridad/velocidad (WAL lo permite)
+    db.execute("PRAGMA cache_size=-8000")           # 8MB de cache en memoria
+    db.execute("PRAGMA foreign_keys=ON")            # Activar restricciones de FK
     return db
 
 
