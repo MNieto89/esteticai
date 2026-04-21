@@ -13,17 +13,49 @@
 <div class="dashboard">
     <div class="dash-header">
         <h1>Panel de administraci&oacute;n</h1>
-        <p>{{ stats.total_usuarios }} usuarios &middot; {{ stats.verificados }} verificados &middot; {{ stats.total_generaciones }} generaciones</p>
+        <p>{{ stats.total_usuarios }} usuarios &middot; {{ stats.verificados }} verificados &middot; {{ stats.total_generaciones }} generaciones totales</p>
     </div>
 
-    <!-- RESUMEN POR PLAN -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:32px;">
-        {% for plan_id, count in stats.por_plan.items() %}
+    <!-- MÉTRICAS PRINCIPALES -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
         <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-            <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ count }}</div>
-            <div style="font-size:13px; color:var(--gris);">{{ plan_id|capitalize }}</div>
+            <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.gen_hoy }}</div>
+            <div style="font-size:13px; color:var(--gris);">Generaciones hoy</div>
         </div>
-        {% endfor %}
+        <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.gen_semana }}</div>
+            <div style="font-size:13px; color:var(--gris);">Generaciones (7d)</div>
+        </div>
+        <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.registros_semana }}</div>
+            <div style="font-size:13px; color:var(--gris);">Registros (7d)</div>
+        </div>
+        <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.total_usuarios }}</div>
+            <div style="font-size:13px; color:var(--gris);">Usuarios totales</div>
+        </div>
+    </div>
+
+    <!-- DESGLOSE: PLANES + TIPOS -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:32px;">
+        <div style="background:white; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris);">Por plan</h3>
+            {% for plan_id, count in stats.por_plan.items() %}
+            <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px;">
+                <span><span class="plan-badge plan-badge-{{ plan_id }}" style="font-size:11px;">{{ plan_id|capitalize }}</span></span>
+                <strong>{{ count }}</strong>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="background:white; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris);">Por tipo de contenido</h3>
+            {% for tipo, count in stats.por_tipo.items() %}
+            <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px;">
+                <span>{{ tipo|capitalize }}</span>
+                <strong>{{ count }}</strong>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 
     <!-- TABLA DE USUARIOS -->

@@ -127,7 +127,7 @@ def generar_csrf_token(request: Request):
 
 
 # Rutas de formularios HTML que requieren validación CSRF
-CSRF_FORM_ROUTES = {"/login", "/registro", "/perfil/crear", "/perfil/editar", "/recuperar", "/cuenta/eliminar"}
+CSRF_FORM_ROUTES = {"/login", "/registro", "/perfil/crear", "/perfil/editar", "/recuperar", "/cuenta/eliminar", "/cuenta/cambiar-password"}
 # Rutas con prefijo (para /reset/{token})
 CSRF_PREFIX_ROUTES = ["/reset/"]
 
@@ -898,14 +898,16 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/login"):
         return templates.TemplateResponse(request, "login.html", context={
-            "error": "Demasiados intentos. Espera unos minutos antes de volver a intentarlo."
+            "error": "Demasiados intentos. Espera unos minutos antes de volver a intentarlo.",
+            "email_value": email,
         })
 
     # Bloqueo por intentos fallidos
     bloqueado, minutos = esta_bloqueado_login(email)
     if bloqueado:
         return templates.TemplateResponse(request, "login.html", context={
-            "error": f"Cuenta bloqueada temporalmente por seguridad. Reint\u00e9ntalo en {minutos} minutos."
+            "error": f"Cuenta bloqueada temporalmente por seguridad. Reint\u00e9ntalo en {minutos} minutos.",
+            "email_value": email,
         })
 
     db = get_db()
@@ -917,12 +919,15 @@ async def login_submit(request: Request, email: str = Form(...), password: str =
         msg = "Email o contrase\u00f1a incorrectos"
         if 0 < intentos_restantes <= 2:
             msg += f". Te quedan {intentos_restantes} intentos antes del bloqueo temporal."
-        return templates.TemplateResponse(request, "login.html", context={"error": msg})
+        return templates.TemplateResponse(request, "login.html", context={
+            "error": msg, "email_value": email,
+        })
 
     # Login exitoso
     limpiar_login_fallidos(email)
     _migrar_password_si_legacy(user["id"], password, user["password_hash"])
     request.session["user_id"] = user["id"]
+    request.session["user_email"] = user["email"]  # Para bypass admin en modo mantenimiento
     return RedirectResponse("/dashboard", status_code=303)
 
 
@@ -938,7 +943,8 @@ async def registro_submit(request: Request, nombre: str = Form(...),
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/registro"):
         return templates.TemplateResponse(request, "registro.html", context={
-            "error": "Demasiados intentos de registro. Espera unos minutos."
+            "error": "Demasiados intentos de registro. Espera unos minutos.",
+            "nombre_value": nombre, "email_value": email,
         })
     # Sanitizar
     nombre = sanitizar_texto(nombre, 100)
@@ -946,13 +952,16 @@ async def registro_submit(request: Request, nombre: str = Form(...),
     # Validar
     error = validar_registro(nombre, email, password)
     if error:
-        return templates.TemplateResponse(request, "registro.html", context={"error": error})
+        return templates.TemplateResponse(request, "registro.html", context={
+            "error": error, "nombre_value": nombre, "email_value": email,
+        })
     db = get_db()
     existe = db.execute("SELECT id FROM usuarios WHERE email = ?", (email,)).fetchone()
     if existe:
         db.close()
         return templates.TemplateResponse(request, "registro.html", context={
-            "error": "Este email ya est\u00e1 registrado"
+            "error": "Este email ya est\u00e1 registrado",
+            "nombre_value": nombre, "email_value": email,
         })
     trial_ends = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
@@ -973,6 +982,7 @@ async def registro_submit(request: Request, nombre: str = Form(...),
     email_enviado = enviar_verificacion_email(email, nombre, verify_link)
 
     request.session["user_id"] = user["id"]
+    request.session["user_email"] = email
 
     if email_enviado:
         # Redirigir a página de "verifica tu email"
@@ -1041,6 +1051,7 @@ async def verificar_email(request: Request, token: str):
     if user:
         enviar_bienvenida(email, user["nombre"])
         request.session["user_id"] = user["id"]
+        request.session["user_email"] = user["email"]
 
     # Redirigir a perfil si no tiene, o al dashboard
     perfil = get_perfil_activo(user["id"]) if user else None
@@ -1423,6 +1434,26 @@ async def admin_panel(request: Request):
     total_gen = db.execute("SELECT COUNT(*) as c FROM generaciones").fetchone()["c"]
     verificados = db.execute("SELECT COUNT(*) as c FROM usuarios WHERE email_verificado = 1").fetchone()["c"]
 
+    # Generaciones hoy y esta semana
+    hoy = datetime.utcnow().strftime("%Y-%m-%d")
+    hace_7_dias = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
+    gen_hoy = db.execute(
+        "SELECT COUNT(*) as c FROM generaciones WHERE creado_en >= ?", (hoy,)
+    ).fetchone()["c"]
+    gen_semana = db.execute(
+        "SELECT COUNT(*) as c FROM generaciones WHERE creado_en >= ?", (hace_7_dias,)
+    ).fetchone()["c"]
+
+    # Desglose por tipo de generación
+    gen_por_tipo = db.execute("""
+        SELECT tipo, COUNT(*) as c FROM generaciones GROUP BY tipo ORDER BY c DESC
+    """).fetchall()
+
+    # Registros esta semana
+    registros_semana = db.execute(
+        "SELECT COUNT(*) as c FROM usuarios WHERE creado_en >= ?", (hace_7_dias,)
+    ).fetchone()["c"]
+
     # Generaciones recientes
     generaciones_recientes = db.execute("""
         SELECT g.tipo, g.creado_en, u.nombre
@@ -1443,7 +1474,11 @@ async def admin_panel(request: Request):
         "total_usuarios": len(usuarios),
         "verificados": verificados,
         "total_generaciones": total_gen,
+        "gen_hoy": gen_hoy,
+        "gen_semana": gen_semana,
+        "registros_semana": registros_semana,
         "por_plan": por_plan,
+        "por_tipo": {row["tipo"]: row["c"] for row in gen_por_tipo},
     }
 
     return templates.TemplateResponse(request, "admin.html", context={
@@ -1589,6 +1624,79 @@ async def exportar_historial_csv(request: Request):
             "Content-Disposition": f'attachment; filename="esteticai_historial_{user["email"]}.csv"',
         }
     )
+
+
+# ============================================================
+# CAMBIAR CONTRASEÑA
+# ============================================================
+
+@app.post("/cuenta/cambiar-password")
+async def cambiar_password(request: Request,
+                            password_actual: str = Form(...),
+                            password_nueva: str = Form(...),
+                            password_confirmar: str = Form(...)):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    # Validar contraseña actual
+    if not verificar_password(password_actual, user["password_hash"]):
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "modo": "editar",
+            "perfil": get_perfil_activo(user["id"]),
+            "user": user,
+            "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
+            "tonos": TONOS_VALIDOS,
+            "redes_disponibles": REDES_VALIDAS,
+            "error": None,
+            "password_error": "La contraseña actual es incorrecta.",
+            "password_success": None,
+        })
+
+    # Validar nueva contraseña
+    if len(password_nueva) < 6:
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "modo": "editar",
+            "perfil": get_perfil_activo(user["id"]),
+            "user": user,
+            "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
+            "tonos": TONOS_VALIDOS,
+            "redes_disponibles": REDES_VALIDAS,
+            "error": None,
+            "password_error": "La nueva contraseña debe tener al menos 6 caracteres.",
+            "password_success": None,
+        })
+
+    if password_nueva != password_confirmar:
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "modo": "editar",
+            "perfil": get_perfil_activo(user["id"]),
+            "user": user,
+            "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
+            "tonos": TONOS_VALIDOS,
+            "redes_disponibles": REDES_VALIDAS,
+            "error": None,
+            "password_error": "Las contraseñas nuevas no coinciden.",
+            "password_success": None,
+        })
+
+    # Actualizar
+    with db_connection() as db:
+        db.execute("UPDATE usuarios SET password_hash = ? WHERE id = ?",
+                   (hash_password(password_nueva), user["id"]))
+    logger.info("Password changed for user %s", user["id"])
+
+    return templates.TemplateResponse(request, "perfil_crear.html", context={
+        "modo": "editar",
+        "perfil": get_perfil_activo(user["id"]),
+        "user": user,
+        "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
+        "tonos": TONOS_VALIDOS,
+        "redes_disponibles": REDES_VALIDAS,
+        "error": None,
+        "password_error": None,
+        "password_success": "Contraseña actualizada correctamente.",
+    })
 
 
 # ============================================================
