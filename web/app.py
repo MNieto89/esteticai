@@ -508,6 +508,13 @@ Allow: /
 Disallow: /dashboard
 Disallow: /perfil/
 Disallow: /api/
+Disallow: /admin
+Disallow: /cuenta/
+Disallow: /cron/
+Disallow: /reset/
+Disallow: /verificar/
+Disallow: /reenviar-verificacion
+
 Sitemap: https://esteticai.com/sitemap.xml
 """
     from starlette.responses import PlainTextResponse
@@ -896,6 +903,22 @@ def sanitizar_texto(texto, max_len=500):
     if len(texto) > max_len:
         texto = texto[:max_len]
     return texto
+
+
+def sanitizar_filename(filename: str) -> str:
+    """Sanitiza nombre de archivo para prevenir path traversal y caracteres peligrosos."""
+    if not filename:
+        return "archivo"
+    # Extraer solo el nombre del archivo (sin path)
+    filename = filename.replace("\\", "/").split("/")[-1]
+    # Eliminar caracteres peligrosos
+    import re as _re_fn
+    filename = _re_fn.sub(r'[^\w\-.]', '_', filename)
+    # Evitar nombres vacíos o solo puntos
+    if not filename or filename.startswith('.'):
+        filename = "archivo" + filename
+    # Limitar longitud
+    return filename[:100]
 
 
 def validar_registro(nombre, email, password):
@@ -1699,7 +1722,7 @@ async def exportar_datos(request: Request):
     return JSONResponse(
         datos,
         headers={
-            "Content-Disposition": f'attachment; filename="esteticai_datos_{user["email"]}.json"',
+            "Content-Disposition": f'attachment; filename="esteticai_datos_{sanitizar_filename(user["email"])}.json"',
         }
     )
 
@@ -1738,7 +1761,7 @@ async def exportar_historial_csv(request: Request):
         content=output.getvalue(),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f'attachment; filename="esteticai_historial_{user["email"]}.csv"',
+            "Content-Disposition": f'attachment; filename="esteticai_historial_{sanitizar_filename(user["email"])}.csv"',
         }
     )
 
@@ -2119,7 +2142,7 @@ async def api_mejorar_foto(
 
     try:
         # Subir a fal.ai storage
-        image_url = subir_imagen_a_fal(contenido, filename=foto.filename or "foto.jpg")
+        image_url = subir_imagen_a_fal(contenido, filename=sanitizar_filename(foto.filename) or "foto.jpg")
         if not image_url:
             return JSONResponse({"error": "No se pudo subir la imagen"}, status_code=500)
 

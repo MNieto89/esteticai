@@ -1442,6 +1442,32 @@ body {
 .toast-success { background: var(--exito); }
 .toast-info { background: #3498db; }
 
+/* Generation skeleton loader */
+.gen-skeleton {
+    padding: 20px;
+    border-radius: 10px;
+    background: var(--rosa-claro);
+}
+.gen-skeleton-line {
+    height: 14px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background: linear-gradient(110deg, #f0e0e6 25%, #f8ecf0 37%, #f0e0e6 63%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+.gen-skeleton-line:nth-child(1) { width: 90%; }
+.gen-skeleton-line:nth-child(2) { width: 75%; }
+.gen-skeleton-line:nth-child(3) { width: 85%; }
+.gen-skeleton-line:nth-child(4) { width: 60%; height: 12px; }
+.gen-skeleton-msg {
+    text-align: center;
+    color: var(--rosa-oscuro);
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 12px;
+}
+
 /* Admin desglose */
 .admin-desglose {
     display: grid;

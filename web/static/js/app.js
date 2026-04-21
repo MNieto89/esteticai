@@ -16,6 +16,16 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function skeletonLoader(msg) {
+    return `<div class="gen-skeleton">
+        <div class="gen-skeleton-line"></div>
+        <div class="gen-skeleton-line"></div>
+        <div class="gen-skeleton-line"></div>
+        <div class="gen-skeleton-line"></div>
+        <div class="gen-skeleton-msg">${escapeHtml(msg)}</div>
+    </div>`;
+}
+
 
 // ============================================================
 // ONBOARDING / TUTORIAL PRIMERA VEZ
@@ -278,7 +288,7 @@ async function generarCopy() {
     const resultDiv = document.getElementById('result-copy');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando copy profesional para tu negocio...</div>';
+    resultDiv.innerHTML = skeletonLoader('Generando copy profesional para tu negocio...');
 
     try {
         const data = await apiCall('/api/generar/copy', { tipo, servicio });
@@ -345,7 +355,7 @@ async function generarImagen() {
     const resultDiv = document.getElementById('result-imagen');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando imagen profesional con IA...</div>';
+    resultDiv.innerHTML = skeletonLoader('Generando imagen profesional con IA...');
 
     try {
         const data = await apiCall('/api/generar/imagen', {
@@ -433,7 +443,7 @@ async function generarVideo() {
     }
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Creando video para Reels (1-3 minutos)...</div>';
+    resultDiv.innerHTML = skeletonLoader('Creando video para Reels (1-3 minutos)...');
 
     try {
         const data = await apiCall('/api/generar/video', {
@@ -489,7 +499,7 @@ async function generarCalendario() {
     const resultDiv = document.getElementById('result-calendario');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Generando calendario semanal con estrategia...</div>';
+    resultDiv.innerHTML = skeletonLoader('Generando calendario semanal con estrategia...');
 
     try {
         const data = await apiCall('/api/generar/calendario', {
@@ -607,7 +617,7 @@ async function mejorarFoto() {
     const btn = document.getElementById('btn-foto');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Mejorando tu foto profesionalmente...</div>';
+    resultDiv.innerHTML = skeletonLoader('Mejorando tu foto profesionalmente...');
     btn.disabled = true;
     btn.textContent = 'Procesando...';
 
@@ -747,7 +757,7 @@ async function componerAntesDespues() {
     const btn = document.getElementById('btn-ad');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = '<div class="loading">Creando composici&oacute;n antes/despu&eacute;s...</div>';
+    resultDiv.innerHTML = skeletonLoader('Creando composición antes/después...');
     btn.disabled = true;
     btn.textContent = 'Creando...';
 

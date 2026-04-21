@@ -1,11 +1,12 @@
-// Esteticai Service Worker v1
-const CACHE_NAME = 'esteticai-v1';
+// Esteticai Service Worker v2
+const CACHE_NAME = 'esteticai-v2';
 const STATIC_ASSETS = [
     '/static/css/style.css',
     '/static/js/app.js',
     '/static/favicon.svg',
     '/static/og-image.svg',
-    '/static/manifest.json'
+    '/static/manifest.json',
+    '/static/offline.html'
 ];
 
 // Install: pre-cache static assets
@@ -52,8 +53,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // HTML pages: network-first with offline fallback
+    // HTML pages: network-first with offline fallback page
     event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
+        fetch(event.request).catch(() =>
+            caches.match(event.request).then((cached) =>
+                cached || caches.match('/static/offline.html')
+            )
+        )
     );
 });
