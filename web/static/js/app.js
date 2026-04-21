@@ -441,7 +441,7 @@ async function generarVideo() {
                         <source src="${video.url}" type="video/mp4">
                     </video>
                     <div style="margin-top:8px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-                        <a href="${video.url}" download class="btn btn-primary" target="_blank">
+                        <a href="${video.url}" download class="btn btn-primary" target="_blank" rel="noopener noreferrer">
                             Descargar video
                         </a>
                         <button class="btn btn-secondary" onclick="generarVideo()">
@@ -799,34 +799,39 @@ function resetAntesDespues() {
 // ============================================================
 
 function descargarImagen(src, nombre) {
-    const timestamp = new Date().toISOString().slice(0,19).replace(/[-:T]/g, '');
-    const filename = (nombre || 'esteticai') + '_' + timestamp + '.jpg';
+    const fecha = new Date();
+    const timestamp = fecha.toISOString().slice(0,10).replace(/-/g, '');
+    const hora = fecha.toTimeString().slice(0,5).replace(':', '');
+    // Detectar extensión desde la URL o data URI
+    let ext = 'jpg';
+    if (src.startsWith('data:image/png')) ext = 'png';
+    else if (src.startsWith('data:image/webp') || src.includes('.webp')) ext = 'webp';
+    else if (src.includes('.png')) ext = 'png';
+    const filename = `${nombre || 'esteticai'}_${timestamp}_${hora}.${ext}`;
 
-    if (src.startsWith('data:')) {
-        // Base64 directo
+    function _descargar(href) {
         const a = document.createElement('a');
-        a.href = src;
+        a.href = href;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        mostrarToast('Imagen descargada', 'success', 2000);
+    }
+
+    if (src.startsWith('data:')) {
+        _descargar(src);
     } else {
-        // URL remota - fetch y descargar como blob
         fetch(src)
             .then(r => r.blob())
             .then(blob => {
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                _descargar(url);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
             })
             .catch(() => {
-                // Fallback: abrir en nueva pestana
-                window.open(src, '_blank');
+                window.open(src, '_blank', 'noopener,noreferrer');
+                mostrarToast('Abriendo imagen en nueva ventana', 'info', 2000);
             });
     }
 }

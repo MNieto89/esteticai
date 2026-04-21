@@ -180,6 +180,7 @@ async def request_id_middleware(request: Request, call_next):
     req_id = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
     _request_id_ctx.set(req_id)
     start = _time.monotonic()
+    _cleanup_rate_limits()  # Limpieza periódica (no-op si no ha pasado el intervalo)
     logger.info("%s %s", request.method, request.url.path)
     response = await call_next(request)
     elapsed_ms = round((_time.monotonic() - start) * 1000, 1)
@@ -301,9 +302,10 @@ def limpiar_login_fallidos(email: str):
 _ip_rate_limits = defaultdict(lambda: defaultdict(list))
 
 IP_RATE_LIMITS = {
-    "/login": (10, 300),         # 10 intentos / 5 min
-    "/registro": (5, 300),       # 5 registros / 5 min
-    "/recuperar": (5, 300),      # 5 solicitudes / 5 min
+    "/login": (10, 300),              # 10 intentos / 5 min
+    "/registro": (5, 300),            # 5 registros / 5 min
+    "/recuperar": (5, 300),           # 5 solicitudes / 5 min
+    "/reenviar-verificacion": (3, 300),  # 3 reenvíos / 5 min
 }
 
 
@@ -347,6 +349,50 @@ def check_rate_limit(user_id, endpoint):
         return False
     _rate_limits[user_id][endpoint].append(now)
     return True
+
+
+# ---- Limpieza periódica de rate limits (evitar memory leak) ----
+_last_cleanup = _time.time()
+_CLEANUP_INTERVAL = 600  # Limpiar cada 10 minutos
+
+def _cleanup_rate_limits():
+    """Purga entradas expiradas de todos los diccionarios de rate limiting."""
+    global _last_cleanup
+    now = _time.time()
+    if now - _last_cleanup < _CLEANUP_INTERVAL:
+        return
+    _last_cleanup = now
+
+    # Limpiar rate limits de API por usuario
+    max_window = max(w for _, w in RATE_LIMITS.values()) if RATE_LIMITS else 3600
+    for uid in list(_rate_limits.keys()):
+        for ep in list(_rate_limits[uid].keys()):
+            _rate_limits[uid][ep] = [t for t in _rate_limits[uid][ep] if now - t < max_window]
+            if not _rate_limits[uid][ep]:
+                del _rate_limits[uid][ep]
+        if not _rate_limits[uid]:
+            del _rate_limits[uid]
+
+    # Limpiar rate limits de IP
+    max_ip_window = max(w for _, w in IP_RATE_LIMITS.values()) if IP_RATE_LIMITS else 300
+    for ip in list(_ip_rate_limits.keys()):
+        for ruta in list(_ip_rate_limits[ip].keys()):
+            _ip_rate_limits[ip][ruta] = [t for t in _ip_rate_limits[ip][ruta] if now - t < max_ip_window]
+            if not _ip_rate_limits[ip][ruta]:
+                del _ip_rate_limits[ip][ruta]
+        if not _ip_rate_limits[ip]:
+            del _ip_rate_limits[ip]
+
+    # Limpiar intentos fallidos de login
+    for email in list(_login_intentos_fallidos.keys()):
+        _login_intentos_fallidos[email] = [
+            t for t in _login_intentos_fallidos[email] if now - t < LOGIN_BLOQUEO_SEGUNDOS
+        ]
+        if not _login_intentos_fallidos[email]:
+            del _login_intentos_fallidos[email]
+
+    logger.debug("Rate limit cleanup: %d users, %d IPs, %d login entries",
+                 len(_rate_limits), len(_ip_rate_limits), len(_login_intentos_fallidos))
 
 
 # ============================================================
@@ -995,6 +1041,7 @@ async def registro_submit(request: Request, nombre: str = Form(...),
 
 
 @app.get("/logout")
+@app.post("/logout")
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
@@ -1065,6 +1112,10 @@ async def reenviar_verificacion(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    # Rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_ip_rate_limit(client_ip, "/reenviar-verificacion"):
+        return JSONResponse({"error": "Demasiados reenvíos. Espera unos minutos."}, status_code=429)
     if user["email_verificado"]:
         return JSONResponse({"ok": True, "msg": "Ya verificado"})
 

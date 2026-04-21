@@ -6,7 +6,9 @@
     <div class="nav-info">{{ perfil.nombre_negocio }}</div>
     <div class="nav-actions">
         <a href="/perfil/editar" class="nav-link" aria-label="Editar perfil de marca">Perfil</a>
-        <a href="/logout" class="nav-link" aria-label="Cerrar sesión">Salir</a>
+        <form method="POST" action="/logout" style="display:inline;margin:0;">
+            <button type="submit" class="nav-link" style="background:none;border:none;cursor:pointer;font:inherit;color:inherit;padding:inherit;" aria-label="Cerrar sesi&oacute;n">Salir</button>
+        </form>
     </div>
 </nav>
 {% endblock %}
@@ -261,7 +263,7 @@
                 {% if gen.video_url and gen.video_url.startswith('http') %}
                 <div class="historial-video-thumb">
                     <span class="historial-play">&#9654;</span>
-                    <a href="{{ gen.video_url }}" target="_blank" class="btn btn-sm">Ver video</a>
+                    <a href="{{ gen.video_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Ver video</a>
                 </div>
                 {% endif %}
                 {% if gen.contenido and gen.tipo == 'copy' %}
