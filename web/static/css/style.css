@@ -22,6 +22,39 @@
     --sombra: 0 2px 12px rgba(0,0,0,0.08);
 }
 
+/* Accesibilidad: skip link */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 16px;
+    z-index: 10000;
+    padding: 8px 16px;
+    background: var(--rosa);
+    color: white;
+    border-radius: 0 0 8px 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: top 0.2s;
+}
+.skip-link:focus {
+    top: 0;
+}
+
+/* Accesibilidad: focus visible */
+:focus-visible {
+    outline: 3px solid var(--rosa);
+    outline-offset: 2px;
+}
+button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid var(--rosa);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(232, 160, 180, 0.25);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--texto);
@@ -667,6 +700,57 @@ body {
     display: block;
     margin-bottom: 8px;
     color: var(--rosa);
+}
+
+/* Paginación */
+.paginacion {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+.paginacion-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--texto);
+    background: white;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.paginacion-btn:hover {
+    background: var(--rosa-claro);
+    border-color: var(--rosa);
+    color: var(--rosa-oscuro);
+}
+.paginacion-actual {
+    background: var(--rosa);
+    color: white;
+    border-color: var(--rosa);
+    cursor: default;
+}
+.paginacion-actual:hover {
+    background: var(--rosa);
+    color: white;
+}
+.paginacion-dots {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    color: var(--gris);
+    font-size: 14px;
 }
 
 /* Landing sections */

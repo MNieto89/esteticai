@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Esteticai{% endblock %}
 {% block nav %}
-<nav class="navbar">
+<nav class="navbar" aria-label="Navegación principal">
     <div class="nav-brand">Esteticai</div>
     <div class="nav-info">{{ perfil.nombre_negocio }}</div>
     <div class="nav-actions">
-        <a href="/perfil/editar" class="nav-link">Perfil</a>
-        <a href="/logout" class="nav-link">Salir</a>
+        <a href="/perfil/editar" class="nav-link" aria-label="Editar perfil de marca">Perfil</a>
+        <a href="/logout" class="nav-link" aria-label="Cerrar sesión">Salir</a>
     </div>
 </nav>
 {% endblock %}
@@ -236,14 +236,14 @@
     {% if generaciones %}
     <div class="historial">
         <h2>Historial reciente</h2>
-        <div class="historial-filtros">
-            <button class="historial-filtro active" onclick="filtrarHistorial('todos', this)">Todos</button>
-            <button class="historial-filtro" onclick="filtrarHistorial('copy', this)">Copys</button>
-            <button class="historial-filtro" onclick="filtrarHistorial('imagen', this)">Im&aacute;genes</button>
-            <button class="historial-filtro" onclick="filtrarHistorial('video', this)">Videos</button>
-            <button class="historial-filtro" onclick="filtrarHistorial('foto', this)">Fotos</button>
-            <button class="historial-filtro" onclick="filtrarHistorial('calendario', this)">Calendarios</button>
-            <button class="historial-filtro" onclick="filtrarHistorial('composicion', this)">Composiciones</button>
+        <div class="historial-filtros" role="group" aria-label="Filtrar historial por tipo">
+            <button class="historial-filtro active" onclick="filtrarHistorial('todos', this)" aria-pressed="true">Todos</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('copy', this)" aria-pressed="false">Copys</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('imagen', this)" aria-pressed="false">Im&aacute;genes</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('video', this)" aria-pressed="false">Videos</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('foto', this)" aria-pressed="false">Fotos</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('calendario', this)" aria-pressed="false">Calendarios</button>
+            <button class="historial-filtro" onclick="filtrarHistorial('composicion', this)" aria-pressed="false">Composiciones</button>
         </div>
         <div class="historial-grid">
             {% for gen in generaciones %}
@@ -273,6 +273,25 @@
             </div>
             {% endfor %}
         </div>
+        {% if total_paginas > 1 %}
+        <nav class="paginacion" aria-label="Paginación del historial">
+            {% if pagina > 1 %}
+            <a href="/dashboard?pagina={{ pagina - 1 }}" class="paginacion-btn">&laquo; Anterior</a>
+            {% endif %}
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                <span class="paginacion-btn paginacion-actual">{{ p }}</span>
+                {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                <a href="/dashboard?pagina={{ p }}" class="paginacion-btn">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                <span class="paginacion-dots">&hellip;</span>
+                {% endif %}
+            {% endfor %}
+            {% if pagina < total_paginas %}
+            <a href="/dashboard?pagina={{ pagina + 1 }}" class="paginacion-btn">Siguiente &raquo;</a>
+            {% endif %}
+        </nav>
+        {% endif %}
     </div>
     {% endif %}
 </div>

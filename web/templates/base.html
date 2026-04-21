@@ -8,7 +8,12 @@
     <meta property="og:title" content="{% block og_title %}Esteticai - IA para profesionales de la est&eacute;tica{% endblock %}">
     <meta property="og:description" content="Genera copys, im&aacute;genes, videos y calendarios para tu negocio de est&eacute;tica con inteligencia artificial.">
     <meta property="og:type" content="website">
+    <meta property="og:image" content="https://esteticai.com/static/og-image.svg">
     <meta property="og:locale" content="es_ES">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Esteticai - IA para profesionales de la estética">
+    <meta name="twitter:description" content="Genera copys, imágenes, videos y calendarios para tu negocio de estética con inteligencia artificial.">
+    <meta name="twitter:image" content="https://esteticai.com/static/og-image.svg">
     <link rel="canonical" href="https://esteticai.com">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="manifest" href="/static/manifest.json">
@@ -19,12 +24,13 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
     {% block nav %}{% endblock %}
-    <main>
+    <main id="main-content" role="main">
         {% block content %}{% endblock %}
     </main>
     <!-- Cookie banner -->
-    <div class="cookie-banner" id="cookie-banner" style="display:none;">
+    <div class="cookie-banner" id="cookie-banner" style="display:none;" role="alert" aria-live="polite">
         <span>Usamos cookies esenciales para que la plataforma funcione. <a href="/cookies">M&aacute;s info</a></span>
         <button class="btn btn-primary btn-sm" onclick="aceptarCookies()">Aceptar</button>
     </div>

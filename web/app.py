@@ -11,20 +11,34 @@ import json
 import hashlib
 import secrets
 import logging
+import uuid
 import bcrypt
 from datetime import datetime, timedelta
 from pathlib import Path
+from contextvars import ContextVar
 
 # ============================================================
-# LOGGING
+# LOGGING CON REQUEST ID
 # ============================================================
+
+# ContextVar para almacenar el request_id de cada petición
+_request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
+
+
+class RequestIdFilter(logging.Filter):
+    """Inyecta el request_id del contexto actual en cada log record."""
+    def filter(self, record):
+        record.request_id = _request_id_ctx.get("-")
+        return True
+
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    format="%(asctime)s [%(levelname)s] [%(request_id)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("esteticai")
+logger.addFilter(RequestIdFilter())
 
 from fastapi import FastAPI, Request, HTTPException, Depends, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -60,6 +74,10 @@ else:
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app = FastAPI(title="Esteticai", version="1.0")
+
+# Compresión Gzip (reduce tamaño de HTML, CSS, JS ~70%)
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Seguridad: HTTPS y cookies seguras en producción
 IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
@@ -154,6 +172,17 @@ def _csrf_template_response(request, name, context=None, status_code=200, **kwar
 templates.TemplateResponse = _csrf_template_response
 
 
+# Request ID middleware — asigna un ID único a cada petición para trazabilidad
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    req_id = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
+    _request_id_ctx.set(req_id)
+    logger.info("%s %s", request.method, request.url.path)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = req_id
+    return response
+
+
 # Security headers middleware
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -161,6 +190,20 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # CSP: permitir recursos propios, inline scripts (necesarios para onclick handlers),
+    # imágenes desde fal.ai y data: URIs, y conectar a Stripe
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https://*.fal.ai https://*.amazonaws.com blob:; "
+        "connect-src 'self' https://api.stripe.com; "
+        "frame-src https://js.stripe.com; "
+        "font-src 'self'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
     if IS_PRODUCTION:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
@@ -446,6 +489,15 @@ def init_db():
         db.execute("SELECT email_verificado FROM usuarios LIMIT 1")
     except sqlite3.OperationalError:
         db.execute("ALTER TABLE usuarios ADD COLUMN email_verificado INTEGER DEFAULT 0")
+    # Índices para rendimiento en consultas frecuentes
+    db.executescript("""
+        CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+        CREATE INDEX IF NOT EXISTS idx_generaciones_usuario ON generaciones(usuario_id, creado_en DESC);
+        CREATE INDEX IF NOT EXISTS idx_uso_mensual_lookup ON uso_mensual(usuario_id, anio, mes);
+        CREATE INDEX IF NOT EXISTS idx_perfiles_usuario ON perfiles(usuario_id);
+        CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token, usado);
+        CREATE INDEX IF NOT EXISTS idx_email_verif_token ON email_verificaciones(token, usado);
+    """)
     db.commit()
     db.close()
 
@@ -1066,6 +1118,8 @@ async def reset_submit(request: Request, token: str, password: str = Form(...)):
 # DASHBOARD
 # ============================================================
 
+HISTORIAL_POR_PAGINA = 20
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     user = get_usuario_actual(request)
@@ -1078,10 +1132,24 @@ async def dashboard(request: Request):
     if not perfil:
         return RedirectResponse("/perfil/crear", status_code=303)
 
+    # Paginación del historial
+    try:
+        pagina = max(1, int(request.query_params.get("pagina", "1")))
+    except (ValueError, TypeError):
+        pagina = 1
+
     db = get_db()
+    total_gen = db.execute(
+        "SELECT COUNT(*) FROM generaciones WHERE usuario_id = ?", (user["id"],)
+    ).fetchone()[0]
+
+    total_paginas = max(1, (total_gen + HISTORIAL_POR_PAGINA - 1) // HISTORIAL_POR_PAGINA)
+    pagina = min(pagina, total_paginas)
+    offset = (pagina - 1) * HISTORIAL_POR_PAGINA
+
     generaciones = db.execute(
-        "SELECT * FROM generaciones WHERE usuario_id = ? ORDER BY creado_en DESC LIMIT 20",
-        (user["id"],)
+        "SELECT * FROM generaciones WHERE usuario_id = ? ORDER BY creado_en DESC LIMIT ? OFFSET ?",
+        (user["id"], HISTORIAL_POR_PAGINA, offset)
     ).fetchall()
     db.close()
 
@@ -1092,6 +1160,9 @@ async def dashboard(request: Request):
         "perfil": perfil,
         "generaciones": generaciones,
         "plan": plan_info,
+        "pagina": pagina,
+        "total_paginas": total_paginas,
+        "total_generaciones": total_gen,
     })
 
 

@@ -179,6 +179,9 @@ function mostrarToast(mensaje, tipo = 'info', duracion = 4000) {
 function crearToastContainer() {
     const c = document.createElement('div');
     c.id = 'toast-container';
+    c.setAttribute('role', 'status');
+    c.setAttribute('aria-live', 'polite');
+    c.setAttribute('aria-label', 'Notificaciones');
     document.body.appendChild(c);
     return c;
 }
@@ -908,9 +911,13 @@ function evaluarPassword(password) {
 
 
 function filtrarHistorial(tipo, btn) {
-    // Actualizar botones activos
-    document.querySelectorAll('.historial-filtro').forEach(b => b.classList.remove('active'));
+    // Actualizar botones activos y aria-pressed
+    document.querySelectorAll('.historial-filtro').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+    });
     btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
 
     // Filtrar items
     document.querySelectorAll('.historial-item').forEach(item => {
