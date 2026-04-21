@@ -17,6 +17,41 @@
         <p>&iquest;Qu&eacute; quieres crear hoy para <strong>{{ perfil.nombre_negocio }}</strong>?</p>
     </div>
 
+    <!-- PLAN STATUS -->
+    {% if plan %}
+    <div class="plan-bar">
+        <div class="plan-info">
+            <span class="plan-badge plan-badge-{{ plan.plan_id }}">{{ plan.plan_nombre }}</span>
+            {% if plan.en_trial %}
+            <span class="plan-trial-days">{{ plan.dias_trial }} d&iacute;as de prueba restantes</span>
+            {% endif %}
+            {% if plan.plan_id == 'free' %}
+            <span class="plan-trial-days" style="color:var(--error);">Tu prueba ha expirado</span>
+            {% endif %}
+        </div>
+        <div class="plan-usage">
+            {% for campo, info in plan.recursos.items() %}
+            {% if not info.no_incluido %}
+            <div class="plan-usage-item" title="{{ campo|capitalize }}: {{ info.usado }}/{% if info.ilimitado %}&infin;{% else %}{{ info.limite }}{% endif %}">
+                <span class="plan-usage-label">{{ campo|capitalize }}</span>
+                {% if info.ilimitado %}
+                <span class="plan-usage-count">{{ info.usado }} / &infin;</span>
+                {% else %}
+                <div class="plan-usage-bar">
+                    <div class="plan-usage-fill {% if info.porcentaje >= 90 %}plan-usage-danger{% elif info.porcentaje >= 70 %}plan-usage-warn{% endif %}" style="width: {{ info.porcentaje }}%"></div>
+                </div>
+                <span class="plan-usage-count">{{ info.usado }}/{{ info.limite }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% if plan.plan_id in ['free', 'trial', 'starter'] %}
+        <a href="/precios" class="btn btn-primary btn-sm">{% if plan.plan_id == 'free' %}Activar plan{% else %}Mejorar plan{% endif %}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div class="generators">
         <!-- COPY -->
         <div class="gen-card" id="card-copy">

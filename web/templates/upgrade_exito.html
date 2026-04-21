@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Plan activado - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar">
+    <div class="nav-brand">Esteticai</div>
+    <div class="nav-actions">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/logout" class="nav-link">Salir</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card" style="text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">&#127881;</div>
+        <h2>&iexcl;Plan activado con &eacute;xito!</h2>
+        <p class="auth-desc">
+            Tu plan <strong>{{ plan_nombre }}</strong> ya est&aacute; activo.
+            Ahora tienes acceso a todas las funcionalidades incluidas.
+        </p>
+        <div style="margin-top:24px;">
+            <a href="/dashboard" class="btn btn-primary btn-full">Ir al dashboard</a>
+        </div>
+        <p style="margin-top:16px; font-size:13px; color:var(--gris);">
+            Si tienes alguna duda sobre tu plan, escr&iacute;benos a
+            <a href="mailto:hola@esteticai.com" style="color:var(--rosa);">hola@esteticai.com</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

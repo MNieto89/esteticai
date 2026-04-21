@@ -173,6 +173,21 @@ def init_db():
             creado_en TEXT DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS uso_mensual (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            anio INTEGER NOT NULL,
+            mes INTEGER NOT NULL,
+            copys INTEGER DEFAULT 0,
+            imagenes INTEGER DEFAULT 0,
+            videos INTEGER DEFAULT 0,
+            fotos INTEGER DEFAULT 0,
+            composiciones INTEGER DEFAULT 0,
+            calendarios INTEGER DEFAULT 0,
+            UNIQUE(usuario_id, anio, mes),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        );
+
         CREATE TABLE IF NOT EXISTS generaciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario_id INTEGER NOT NULL,
@@ -186,7 +201,7 @@ def init_db():
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         );
     """)
-    # Migracion: anadir columnas si no existen (para DBs creadas antes)
+    # Migraciones: anadir columnas si no existen (para DBs creadas antes)
     try:
         db.execute("SELECT valores FROM perfiles LIMIT 1")
     except sqlite3.OperationalError:
@@ -194,11 +209,191 @@ def init_db():
         db.execute("ALTER TABLE perfiles ADD COLUMN publico TEXT DEFAULT ''")
         db.execute("ALTER TABLE perfiles ADD COLUMN redes TEXT DEFAULT '[\"Instagram\"]'")
         db.execute("ALTER TABLE perfiles ADD COLUMN mejores_horarios TEXT DEFAULT '{}'")
+    # Migracion: plan y trial en usuarios
+    try:
+        db.execute("SELECT plan FROM usuarios LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE usuarios ADD COLUMN plan TEXT DEFAULT 'trial'")
+        db.execute("ALTER TABLE usuarios ADD COLUMN trial_ends_at TEXT DEFAULT ''")
+        db.execute("ALTER TABLE usuarios ADD COLUMN stripe_customer_id TEXT DEFAULT ''")
+        db.execute("ALTER TABLE usuarios ADD COLUMN stripe_subscription_id TEXT DEFAULT ''")
     db.commit()
     db.close()
 
 
 init_db()
+
+
+# ============================================================
+# SISTEMA DE PLANES
+# ============================================================
+
+PLANES = {
+    "free": {
+        "nombre": "Free",
+        "precio": 0,
+        "limites": {
+            "copys": 5, "imagenes": 3, "videos": 0,
+            "fotos": 0, "composiciones": 2, "calendarios": 2,
+        },
+    },
+    "trial": {
+        "nombre": "Trial (Pro)",
+        "precio": 0,
+        "limites": {
+            "copys": 50, "imagenes": 50, "videos": 10,
+            "fotos": 30, "composiciones": 20, "calendarios": 10,
+        },
+    },
+    "starter": {
+        "nombre": "Starter",
+        "precio": 59,
+        "limites": {
+            "copys": -1, "imagenes": 15, "videos": 0,
+            "fotos": 0, "composiciones": 5, "calendarios": -1,
+        },
+    },
+    "pro": {
+        "nombre": "Pro",
+        "precio": 149,
+        "limites": {
+            "copys": -1, "imagenes": 50, "videos": 10,
+            "fotos": 30, "composiciones": 20, "calendarios": -1,
+        },
+    },
+    "business": {
+        "nombre": "Business",
+        "precio": 249,
+        "limites": {
+            "copys": -1, "imagenes": -1, "videos": 30,
+            "fotos": -1, "composiciones": -1, "calendarios": -1,
+        },
+    },
+}
+
+# Mapeo tipo de generación → campo en uso_mensual
+TIPO_A_CAMPO_USO = {
+    "copy": "copys",
+    "imagen": "imagenes",
+    "video": "videos",
+    "foto": "fotos",
+    "composicion": "composiciones",
+    "calendario": "calendarios",
+}
+
+
+def get_plan_usuario(user):
+    """Devuelve el plan efectivo del usuario (considera expiración del trial)."""
+    plan = user.get("plan") or user["plan"] if isinstance(user, dict) else "trial"
+    if plan == "trial":
+        trial_ends = user.get("trial_ends_at") or user["trial_ends_at"] if isinstance(user, dict) else ""
+        if trial_ends:
+            from datetime import datetime as dt
+            try:
+                fin = dt.strptime(trial_ends, "%Y-%m-%d %H:%M:%S")
+                if dt.utcnow() > fin:
+                    return "free"  # Trial expirado
+            except (ValueError, TypeError):
+                pass
+    return plan if plan in PLANES else "free"
+
+
+def get_uso_mensual(user_id):
+    """Devuelve el uso del mes actual."""
+    now = datetime.utcnow()
+    db = get_db()
+    uso = db.execute(
+        "SELECT * FROM uso_mensual WHERE usuario_id = ? AND anio = ? AND mes = ?",
+        (user_id, now.year, now.month)
+    ).fetchone()
+    db.close()
+    if uso:
+        return dict(uso)
+    return {
+        "copys": 0, "imagenes": 0, "videos": 0,
+        "fotos": 0, "composiciones": 0, "calendarios": 0,
+    }
+
+
+def incrementar_uso(user_id, tipo_gen):
+    """Incrementa el contador de uso mensual para un tipo de generación."""
+    campo = TIPO_A_CAMPO_USO.get(tipo_gen)
+    if not campo:
+        return
+    now = datetime.utcnow()
+    db = get_db()
+    # Upsert: insertar si no existe, incrementar si existe
+    db.execute(f"""
+        INSERT INTO uso_mensual (usuario_id, anio, mes, {campo})
+        VALUES (?, ?, ?, 1)
+        ON CONFLICT(usuario_id, anio, mes)
+        DO UPDATE SET {campo} = {campo} + 1
+    """, (user_id, now.year, now.month))
+    db.commit()
+    db.close()
+
+
+def verificar_limite_plan(user, tipo_gen):
+    """Verifica si el usuario puede generar. Retorna (ok, mensaje_error)."""
+    plan_id = get_plan_usuario(user)
+    plan = PLANES.get(plan_id, PLANES["free"])
+    campo = TIPO_A_CAMPO_USO.get(tipo_gen)
+    if not campo:
+        return True, ""
+
+    limite = plan["limites"].get(campo, 0)
+    if limite == -1:  # Ilimitado
+        return True, ""
+    if limite == 0:  # No incluido en el plan
+        return False, f"Tu plan {plan['nombre']} no incluye esta funci\u00f3n. Actualiza a un plan superior."
+
+    uso = get_uso_mensual(user["id"])
+    usado = uso.get(campo, 0)
+    if usado >= limite:
+        return False, f"Has alcanzado el l\u00edmite mensual de {limite} {campo} en tu plan {plan['nombre']}. Actualiza tu plan para generar m\u00e1s."
+
+    return True, ""
+
+
+def get_info_plan_usuario(user):
+    """Retorna info completa del plan y uso para mostrar en el dashboard."""
+    plan_id = get_plan_usuario(user)
+    plan = PLANES.get(plan_id, PLANES["free"])
+    uso = get_uso_mensual(user["id"])
+
+    # Calcular días de trial restantes
+    dias_trial = 0
+    en_trial = plan_id == "trial"
+    if en_trial:
+        trial_ends = user.get("trial_ends_at") or ""
+        if trial_ends:
+            from datetime import datetime as dt
+            try:
+                fin = dt.strptime(trial_ends, "%Y-%m-%d %H:%M:%S")
+                dias_trial = max(0, (fin - dt.utcnow()).days)
+            except (ValueError, TypeError):
+                pass
+
+    # Construir info de cada recurso
+    recursos = {}
+    for campo, limite in plan["limites"].items():
+        usado = uso.get(campo, 0)
+        recursos[campo] = {
+            "usado": usado,
+            "limite": limite,
+            "ilimitado": limite == -1,
+            "no_incluido": limite == 0,
+            "porcentaje": min(100, int(usado / limite * 100)) if limite > 0 else 0,
+        }
+
+    return {
+        "plan_id": plan_id,
+        "plan_nombre": plan["nombre"],
+        "precio": plan["precio"],
+        "en_trial": en_trial,
+        "dias_trial": dias_trial,
+        "recursos": recursos,
+    }
 
 
 # ============================================================
@@ -393,9 +588,10 @@ async def registro_submit(request: Request, nombre: str = Form(...),
         return templates.TemplateResponse(request, "registro.html", context={
             "error": "Este email ya est\u00e1 registrado"
         })
+    trial_ends = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
     db.execute(
-        "INSERT INTO usuarios (email, password_hash, nombre) VALUES (?, ?, ?)",
-        (email, hash_password(password), nombre)
+        "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at) VALUES (?, ?, ?, 'trial', ?)",
+        (email, hash_password(password), nombre, trial_ends)
     )
     db.commit()
     user = db.execute("SELECT id FROM usuarios WHERE email = ?", (email,)).fetchone()
@@ -522,10 +718,13 @@ async def dashboard(request: Request):
     ).fetchall()
     db.close()
 
+    plan_info = get_info_plan_usuario(user)
+
     return templates.TemplateResponse(request, "dashboard.html", context={
         "user": user,
         "perfil": perfil,
         "generaciones": generaciones,
+        "plan": plan_info,
     })
 
 
@@ -694,8 +893,9 @@ async def api_generar_copy(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    if not check_rate_limit(user["id"], "/api/generar/copy"):
-        return JSONResponse({"error": "Has alcanzado el l\u00edmite de generaciones. Espera un poco antes de intentarlo de nuevo."}, status_code=429)
+    ok, msg = verificar_limite_plan(user, "copy")
+    if not ok:
+        return JSONResponse({"error": msg}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -714,6 +914,7 @@ async def api_generar_copy(request: Request):
         )
         guardar_generacion(user["id"], perfil["id"], "copy",
                           contenido=json.dumps(copy, ensure_ascii=False))
+        incrementar_uso(user["id"], "copy")
         return JSONResponse({"ok": True, "copy": copy})
     except Exception as e:
         error_msg = str(e)
@@ -730,8 +931,9 @@ async def api_generar_imagen(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    if not check_rate_limit(user["id"], "/api/generar/imagen"):
-        return JSONResponse({"error": "Has alcanzado el l\u00edmite de im\u00e1genes por hora. Espera un poco."}, status_code=429)
+    ok, msg = verificar_limite_plan(user, "imagen")
+    if not ok:
+        return JSONResponse({"error": msg}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -752,6 +954,7 @@ async def api_generar_imagen(request: Request):
             guardar_generacion(user["id"], perfil["id"], "imagen",
                               imagen_url=resultado.get("url") if not resultado.get("es_demo") else None,
                               metadata={"servicio": servicio, "tipo": tipo_pub, "es_demo": resultado.get("es_demo", False)})
+            incrementar_uso(user["id"], "imagen")
         return JSONResponse({"ok": True, "imagen": resultado})
     except Exception as e:
         print(f"[ERROR] Imagen: {e}")
@@ -763,8 +966,9 @@ async def api_generar_video(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    if not check_rate_limit(user["id"], "/api/generar/video"):
-        return JSONResponse({"error": "Has alcanzado el l\u00edmite de videos por hora. Espera un poco."}, status_code=429)
+    ok, msg = verificar_limite_plan(user, "video")
+    if not ok:
+        return JSONResponse({"error": msg}, status_code=429)
 
     data = await request.json()
     url_imagen = data.get("url_imagen", "")
@@ -786,6 +990,7 @@ async def api_generar_video(request: Request):
                               imagen_url=url_imagen,
                               video_url=resultado.get("url"),
                               metadata={"movimiento": tipo_movimiento, "duracion": duracion})
+            incrementar_uso(user["id"], "video")
         return JSONResponse({"ok": True, "video": resultado})
     except Exception as e:
         error_msg = str(e)
@@ -800,8 +1005,9 @@ async def api_generar_calendario(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    if not check_rate_limit(user["id"], "/api/generar/calendario"):
-        return JSONResponse({"error": "Has alcanzado el l\u00edmite de calendarios por hora."}, status_code=429)
+    ok, msg = verificar_limite_plan(user, "calendario")
+    if not ok:
+        return JSONResponse({"error": msg}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -813,6 +1019,7 @@ async def api_generar_calendario(request: Request):
         cal = generar_contenido_semanal(perfil=perfil, contenido_extra=contexto)
         guardar_generacion(user["id"], perfil["id"], "calendario",
                           contenido=json.dumps(cal, ensure_ascii=False))
+        incrementar_uso(user["id"], "calendario")
         return JSONResponse({"ok": True, "calendario": cal})
     except Exception as e:
         print(f"[ERROR] Calendario: {e}")
@@ -951,8 +1158,9 @@ async def api_mejorar_foto(
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    if not check_rate_limit(user["id"], "/api/mejorar-foto"):
-        return JSONResponse({"error": "Has alcanzado el l\u00edmite de mejoras de foto por hora."}, status_code=429)
+    ok, msg = verificar_limite_plan(user, "foto")
+    if not ok:
+        return JSONResponse({"error": msg}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -991,6 +1199,7 @@ async def api_mejorar_foto(
                 "tipo_tratamiento": tipo_tratamiento,
             },
         )
+        incrementar_uso(user["id"], "foto")
         return JSONResponse({"ok": True, "resultado": resultado})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -1019,8 +1228,9 @@ async def api_componer_antes_despues(
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    if not check_rate_limit(user["id"], "/api/componer-antes-despues"):
-        return JSONResponse({"error": "Has alcanzado el l\u00edmite de composiciones por hora."}, status_code=429)
+    ok, msg = verificar_limite_plan(user, "composicion")
+    if not ok:
+        return JSONResponse({"error": msg}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -1067,6 +1277,7 @@ async def api_componer_antes_despues(
             },
         )
 
+        incrementar_uso(user["id"], "composicion")
         return JSONResponse({"ok": True, "resultado": respuesta})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -1103,6 +1314,147 @@ async def api_opciones(request: Request):
         "tipos_publicacion": tipos_publicacion,
         "movimientos_video": movimientos,
     })
+
+
+# ============================================================
+# STRIPE - PAGOS (skeleton, activar con STRIPE_SECRET_KEY)
+# ============================================================
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+# Mapeo plan → Stripe Price ID (configurar en Stripe Dashboard)
+STRIPE_PRICE_IDS = {
+    "starter": os.environ.get("STRIPE_PRICE_STARTER", ""),
+    "pro": os.environ.get("STRIPE_PRICE_PRO", ""),
+    "business": os.environ.get("STRIPE_PRICE_BUSINESS", ""),
+}
+
+
+@app.get("/upgrade", response_class=HTMLResponse)
+async def upgrade_page(request: Request):
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    plan_info = get_info_plan_usuario(user)
+    return templates.TemplateResponse(request, "upgrade.html", context={
+        "user": user, "plan": plan_info, "planes": PLANES,
+        "stripe_activo": bool(STRIPE_SECRET_KEY),
+    })
+
+
+@app.post("/api/crear-checkout")
+async def api_crear_checkout(request: Request):
+    """Crea una sesión de Stripe Checkout para upgrade de plan."""
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+
+    if not STRIPE_SECRET_KEY:
+        return JSONResponse({
+            "error": "El sistema de pagos a\u00fan no est\u00e1 configurado. Contacta con hola@esteticai.com para activar tu plan."
+        }, status_code=503)
+
+    data = await request.json()
+    plan_elegido = data.get("plan", "")
+    if plan_elegido not in STRIPE_PRICE_IDS or not STRIPE_PRICE_IDS[plan_elegido]:
+        return JSONResponse({"error": "Plan no v\u00e1lido"}, status_code=400)
+
+    try:
+        import stripe
+        stripe.api_key = STRIPE_SECRET_KEY
+
+        # Crear o recuperar customer de Stripe
+        customer_id = user.get("stripe_customer_id") or ""
+        if not customer_id:
+            customer = stripe.Customer.create(
+                email=user["email"],
+                name=user["nombre"],
+                metadata={"user_id": str(user["id"])}
+            )
+            customer_id = customer.id
+            db = get_db()
+            db.execute("UPDATE usuarios SET stripe_customer_id = ? WHERE id = ?",
+                       (customer_id, user["id"]))
+            db.commit()
+            db.close()
+
+        # Crear sesión de checkout
+        base_url = str(request.base_url).rstrip("/")
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            mode="subscription",
+            line_items=[{"price": STRIPE_PRICE_IDS[plan_elegido], "quantity": 1}],
+            success_url=f"{base_url}/upgrade/exito?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{base_url}/upgrade",
+            metadata={"user_id": str(user["id"]), "plan": plan_elegido},
+        )
+        return JSONResponse({"ok": True, "checkout_url": session.url})
+
+    except ImportError:
+        return JSONResponse({"error": "Stripe no est\u00e1 instalado en el servidor."}, status_code=503)
+    except Exception as e:
+        print(f"[ERROR] Stripe checkout: {e}")
+        return JSONResponse({"error": "Error al crear la sesi\u00f3n de pago."}, status_code=500)
+
+
+@app.get("/upgrade/exito", response_class=HTMLResponse)
+async def upgrade_exito(request: Request):
+    """Página de éxito tras completar el pago."""
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    # En producción el webhook actualiza el plan; esto es fallback de UX
+    return templates.TemplateResponse(request, "upgrade_exito.html", context={"user": user})
+
+
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+    """Webhook de Stripe para confirmar pagos y gestionar suscripciones."""
+    if not STRIPE_SECRET_KEY or not STRIPE_WEBHOOK_SECRET:
+        return JSONResponse({"error": "No configurado"}, status_code=503)
+
+    try:
+        import stripe
+        stripe.api_key = STRIPE_SECRET_KEY
+        payload = await request.body()
+        sig_header = request.headers.get("stripe-signature", "")
+
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            user_id = int(session["metadata"]["user_id"])
+            plan = session["metadata"]["plan"]
+            subscription_id = session.get("subscription", "")
+            db = get_db()
+            db.execute(
+                "UPDATE usuarios SET plan = ?, stripe_subscription_id = ? WHERE id = ?",
+                (plan, subscription_id, user_id)
+            )
+            db.commit()
+            db.close()
+            print(f"[STRIPE] Usuario {user_id} actualizado a plan {plan}")
+
+        elif event["type"] == "customer.subscription.deleted":
+            subscription = event["data"]["object"]
+            sub_id = subscription["id"]
+            db = get_db()
+            db.execute(
+                "UPDATE usuarios SET plan = 'free', stripe_subscription_id = '' WHERE stripe_subscription_id = ?",
+                (sub_id,)
+            )
+            db.commit()
+            db.close()
+            print(f"[STRIPE] Suscripci\u00f3n {sub_id} cancelada, usuario bajado a free")
+
+        return JSONResponse({"ok": True})
+
+    except Exception as e:
+        print(f"[ERROR] Stripe webhook: {e}")
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 if __name__ == "__main__":

@@ -366,6 +366,83 @@ body {
     margin-top: 4px;
 }
 
+/* Plan status bar */
+.plan-bar {
+    background: white;
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--sombra);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.plan-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+.plan-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.plan-badge-trial { background: #e8f4fd; color: #2980b9; }
+.plan-badge-free { background: #f0f0f0; color: #888; }
+.plan-badge-starter { background: var(--dorado-claro); color: var(--dorado); }
+.plan-badge-pro { background: var(--rosa-claro); color: var(--rosa-oscuro); }
+.plan-badge-business { background: #2d2d2d; color: white; }
+.plan-trial-days {
+    font-size: 12px;
+    color: var(--rosa);
+    font-weight: 500;
+}
+.plan-usage {
+    display: flex;
+    gap: 14px;
+    flex: 1;
+    flex-wrap: wrap;
+}
+.plan-usage-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 100px;
+}
+.plan-usage-label {
+    font-size: 11px;
+    color: var(--gris);
+    font-weight: 500;
+    min-width: 55px;
+}
+.plan-usage-bar {
+    width: 50px;
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.plan-usage-fill {
+    height: 100%;
+    background: var(--rosa);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+.plan-usage-warn { background: #f39c12; }
+.plan-usage-danger { background: var(--error); }
+.plan-usage-count {
+    font-size: 11px;
+    color: var(--gris);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 /* Generator cards */
 .generators {
     display: grid;

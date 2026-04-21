@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Mejorar plan - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar">
+    <div class="nav-brand">Esteticai</div>
+    <div class="nav-actions">
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <a href="/logout" class="nav-link">Salir</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="precios-hero" style="padding-top:40px; padding-bottom:20px;">
+    <h1>Mejora tu plan</h1>
+    <p class="precios-sub">
+        Plan actual: <strong>{{ plan.plan_nombre }}</strong>
+        {% if plan.en_trial %} &mdash; {{ plan.dias_trial }} d&iacute;as de prueba restantes{% endif %}
+    </p>
+</div>
+
+<div class="precios-grid">
+    {% for plan_id, plan_data in planes.items() %}
+    {% if plan_id not in ['free', 'trial'] %}
+    <div class="precio-card {% if plan_id == 'pro' %}precio-destacado{% endif %}">
+        {% if plan_id == 'pro' %}<div class="precio-badge">M&aacute;s popular</div>{% endif %}
+        <div class="precio-header">
+            <h3>{{ plan_data.nombre }}</h3>
+        </div>
+        <div class="precio-amount">
+            <span class="precio-moneda">&euro;</span>
+            <span class="precio-num">{{ plan_data.precio }}</span>
+            <span class="precio-periodo">/mes</span>
+        </div>
+        <ul class="precio-features">
+            {% for campo, limite in plan_data.limites.items() %}
+            <li class="{% if limite != 0 %}included{% else %}not-included{% endif %}">
+                {{ campo|capitalize }}:
+                {% if limite == -1 %}ilimitado{% elif limite == 0 %}no incluido{% else %}{{ limite }}/mes{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if stripe_activo %}
+        <button class="btn {% if plan_id == 'pro' %}btn-primary{% else %}btn-secondary{% endif %} btn-full"
+                onclick="iniciarCheckout('{{ plan_id }}')">
+            Activar {{ plan_data.nombre }}
+        </button>
+        {% else %}
+        <a href="mailto:hola@esteticai.com?subject=Activar plan {{ plan_data.nombre }}"
+           class="btn {% if plan_id == 'pro' %}btn-primary{% else %}btn-secondary{% endif %} btn-full"
+           style="text-align:center;">
+            Contactar para activar
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<div class="landing-section">
+    <div class="landing-content landing-cta">
+        <p><a href="/dashboard" style="color:var(--rosa);">&larr; Volver al dashboard</a></p>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function iniciarCheckout(plan) {
+    try {
+        const res = await fetch('/api/crear-checkout', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({plan: plan}),
+        });
+        const data = await res.json();
+        if (data.ok && data.checkout_url) {
+            window.location.href = data.checkout_url;
+        } else {
+            alert(data.error || 'Error al crear la sesion de pago');
+        }
+    } catch(e) {
+        alert('Error de conexion: ' + e.message);
+    }
+}
+</script>
+{% endblock %}
