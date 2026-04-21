@@ -158,13 +158,71 @@ document.querySelectorAll('.gen-card').forEach(card => {
 });
 
 
+// ============================================================
+// SISTEMA DE NOTIFICACIONES TOAST
+// ============================================================
+
+function mostrarToast(mensaje, tipo = 'info', duracion = 4000) {
+    const container = document.getElementById('toast-container') || crearToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${tipo}`;
+    toast.textContent = mensaje;
+    container.appendChild(toast);
+    // Trigger animation
+    requestAnimationFrame(() => toast.classList.add('toast-visible'));
+    setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        setTimeout(() => toast.remove(), 300);
+    }, duracion);
+}
+
+function crearToastContainer() {
+    const c = document.createElement('div');
+    c.id = 'toast-container';
+    document.body.appendChild(c);
+    return c;
+}
+
+
+// ============================================================
+// API CALL CON MANEJO DE ERRORES
+// ============================================================
+
 async function apiCall(url, data) {
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
-    return await res.json();
+    const json = await res.json();
+    if (!res.ok && json.error) {
+        if (res.status === 429) {
+            mostrarToast(json.error, 'warning', 6000);
+        } else if (res.status === 401) {
+            mostrarToast('Tu sesion ha expirado. Redirigiendo...', 'error');
+            setTimeout(() => window.location.href = '/login', 1500);
+        }
+    }
+    return json;
+}
+
+
+// ============================================================
+// PROTECCION ANTI-DOBLE-CLICK
+// ============================================================
+
+const _generando = {};
+
+function bloquearBoton(key, btn) {
+    if (_generando[key]) return false;
+    _generando[key] = true;
+    if (btn) { btn.disabled = true; btn._textoOriginal = btn.textContent; btn.textContent = 'Generando...'; }
+    return true;
+}
+
+function desbloquearBoton(key, btn) {
+    _generando[key] = false;
+    if (btn) { btn.disabled = false; btn.textContent = btn._textoOriginal || 'Generar'; }
 }
 
 
@@ -173,6 +231,9 @@ async function apiCall(url, data) {
 // ============================================================
 
 async function generarCopy() {
+    const btn = document.querySelector('#form-copy .btn-primary');
+    if (!bloquearBoton('copy', btn)) return;
+
     const tipo = document.getElementById('copy-tipo').value;
     const servicio = document.getElementById('copy-servicio').value;
     const resultDiv = document.getElementById('result-copy');
@@ -226,6 +287,8 @@ async function generarCopy() {
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error de conexion: ${e.message}</div>`;
+    } finally {
+        desbloquearBoton('copy', btn);
     }
 }
 
@@ -235,6 +298,9 @@ async function generarCopy() {
 // ============================================================
 
 async function generarImagen() {
+    const btn = document.querySelector('#form-imagen .btn-primary');
+    if (!bloquearBoton('imagen', btn)) return;
+
     const servicio = document.getElementById('img-servicio').value;
     const tipo = document.getElementById('img-tipo').value;
     const resultDiv = document.getElementById('result-imagen');
@@ -285,6 +351,8 @@ async function generarImagen() {
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
+    } finally {
+        desbloquearBoton('imagen', btn);
     }
 }
 
@@ -310,6 +378,9 @@ function prepararVideo() {
 // ============================================================
 
 async function generarVideo() {
+    const btn = document.getElementById('btn-video');
+    if (!bloquearBoton('video', btn)) return;
+
     const urlImagen = document.getElementById('video-url').value;
     const movimiento = document.getElementById('video-movimiento').value;
     const duracion = parseInt(document.getElementById('video-duracion').value);
@@ -318,6 +389,7 @@ async function generarVideo() {
     if (!urlImagen.startsWith('http')) {
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = '<div>Genera una imagen primero</div>';
+        desbloquearBoton('video', btn);
         return;
     }
 
@@ -360,6 +432,8 @@ async function generarVideo() {
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
+    } finally {
+        desbloquearBoton('video', btn);
     }
 }
 
@@ -369,6 +443,9 @@ async function generarVideo() {
 // ============================================================
 
 async function generarCalendario() {
+    const btn = document.querySelector('#form-calendario .btn-primary');
+    if (!bloquearBoton('calendario', btn)) return;
+
     const contexto = document.getElementById('cal-contexto').value;
     const resultDiv = document.getElementById('result-calendario');
 
@@ -437,6 +514,8 @@ async function generarCalendario() {
         }
     } catch (e) {
         resultDiv.innerHTML = `<div>Error: ${e.message}</div>`;
+    } finally {
+        desbloquearBoton('calendario', btn);
     }
 }
 
