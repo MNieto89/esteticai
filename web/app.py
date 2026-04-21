@@ -172,14 +172,57 @@ def _csrf_template_response(request, name, context=None, status_code=200, **kwar
 templates.TemplateResponse = _csrf_template_response
 
 
-# Request ID middleware — asigna un ID único a cada petición para trazabilidad
+# Request ID + timing middleware — ID único y métricas de respuesta
+import time as _time
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     req_id = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
     _request_id_ctx.set(req_id)
+    start = _time.monotonic()
     logger.info("%s %s", request.method, request.url.path)
     response = await call_next(request)
+    elapsed_ms = round((_time.monotonic() - start) * 1000, 1)
     response.headers["X-Request-ID"] = req_id
+    response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
+    # Log detallado para endpoints lentos (API de generación IA)
+    ruta = request.url.path
+    if ruta.startswith("/api/generar") or ruta.startswith("/api/mejorar") or ruta.startswith("/api/componer"):
+        logger.info("AI endpoint %s completed in %.0fms (status %s)", ruta, elapsed_ms, response.status_code)
+    elif elapsed_ms > 1000:
+        logger.warning("Slow response: %s %s took %.0fms", request.method, ruta, elapsed_ms)
+    return response
+
+
+# Modo mantenimiento — activar con MAINTENANCE_MODE=1
+MAINTENANCE_MODE = os.environ.get("MAINTENANCE_MODE", "").strip() in ("1", "true", "yes")
+_MAINTENANCE_BYPASS = {"/health", "/static"}
+
+@app.middleware("http")
+async def maintenance_middleware(request: Request, call_next):
+    if MAINTENANCE_MODE:
+        ruta = request.url.path
+        # Permitir health check y estáticos siempre
+        if not any(ruta.startswith(p) for p in _MAINTENANCE_BYPASS):
+            # Permitir acceso a admins logueados
+            email = request.session.get("user_email", "") if hasattr(request, "session") else ""
+            admin_emails = set(
+                e.strip() for e in os.environ.get("ADMIN_EMAILS", "mrt.niet@gmail.com").split(",") if e.strip()
+            )
+            if email not in admin_emails:
+                from starlette.responses import HTMLResponse as _HTML
+                return _HTML(
+                    '<html lang="es"><head><meta charset="UTF-8"><title>Mantenimiento</title>'
+                    '<style>body{font-family:sans-serif;display:flex;justify-content:center;'
+                    'align-items:center;min-height:100vh;margin:0;background:#f8f4f5;color:#333;'
+                    'text-align:center}div{max-width:500px;padding:40px}</style></head>'
+                    '<body><div><h1 style="font-size:48px;margin-bottom:16px">&#128736;</h1>'
+                    '<h2>Estamos mejorando Esteticai</h2>'
+                    '<p style="color:#888;margin-top:12px">Volvemos en unos minutos. Gracias por tu paciencia.</p>'
+                    '</div></body></html>',
+                    status_code=503,
+                )
+    response = await call_next(request)
     return response
 
 
@@ -331,9 +374,33 @@ async def server_error_handler(request: Request, exc):
 
 
 # Health check para verificar que la app arranca
+_APP_START_TIME = datetime.utcnow()
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "1.0"}
+    # Verificar conexión a BD
+    db_ok = False
+    db_usuarios = 0
+    try:
+        db = get_db()
+        db_usuarios = db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
+        db.close()
+        db_ok = True
+    except Exception:
+        pass
+
+    uptime_seconds = int((datetime.utcnow() - _APP_START_TIME).total_seconds())
+    horas, resto = divmod(uptime_seconds, 3600)
+    minutos, segundos = divmod(resto, 60)
+
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "version": "1.0",
+        "db": "ok" if db_ok else "error",
+        "usuarios": db_usuarios,
+        "uptime": f"{horas}h {minutos}m {segundos}s",
+        "environment": "production" if IS_PRODUCTION else "development",
+    }
 
 
 # ============================================================
@@ -1485,6 +1552,45 @@ async def exportar_datos(request: Request):
     )
 
 
+@app.get("/cuenta/exportar-historial")
+async def exportar_historial_csv(request: Request):
+    """Descarga el historial de generaciones como CSV."""
+    user = get_usuario_actual(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    import csv
+    import io
+
+    db = get_db()
+    generaciones = db.execute(
+        "SELECT tipo, contenido, imagen_url, video_url, metadata, creado_en "
+        "FROM generaciones WHERE usuario_id = ? ORDER BY creado_en DESC",
+        (user["id"],)
+    ).fetchall()
+    db.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Fecha", "Tipo", "Contenido", "URL Imagen", "URL Video", "Metadata"])
+    for g in generaciones:
+        contenido = (g["contenido"] or "")[:500]  # Limitar longitud
+        writer.writerow([
+            g["creado_en"], g["tipo"], contenido,
+            g["imagen_url"] or "", g["video_url"] or "",
+            g["metadata"] or "",
+        ])
+
+    from starlette.responses import Response
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="esteticai_historial_{user["email"]}.csv"',
+        }
+    )
+
+
 # ============================================================
 # API - GENERACION DE CONTENIDO
 # ============================================================
@@ -2008,6 +2114,37 @@ async def cron_backup(request: Request):
     except Exception as e:
         logger.error("Backup failed: %s", e)
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/cron/cleanup")
+async def cron_cleanup(request: Request):
+    """Limpia tokens expirados de password_resets y email_verificaciones.
+    Protegido por CRON_SECRET. Llamar: GET /cron/cleanup?secret=<CRON_SECRET>
+    """
+    token = request.query_params.get("secret", "")
+    if not CRON_SECRET or token != CRON_SECRET:
+        raise HTTPException(status_code=404)
+
+    db = get_db()
+    # Eliminar tokens de más de 48 horas (usados o expirados)
+    corte = (datetime.utcnow() - timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
+
+    r1 = db.execute("DELETE FROM password_resets WHERE creado_en < ?", (corte,))
+    reset_borrados = r1.rowcount
+
+    r2 = db.execute("DELETE FROM email_verificaciones WHERE creado_en < ?", (corte,))
+    verif_borrados = r2.rowcount
+
+    db.commit()
+    db.close()
+
+    logger.info("Cleanup cron: deleted %d password_resets, %d email_verificaciones",
+                reset_borrados, verif_borrados)
+    return JSONResponse({
+        "ok": True,
+        "password_resets_borrados": reset_borrados,
+        "email_verificaciones_borradas": verif_borrados,
+    })
 
 
 # ============================================================
