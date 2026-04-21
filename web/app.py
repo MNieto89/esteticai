@@ -176,6 +176,65 @@ import time as _time
 # {user_id: {endpoint: [timestamps]}}
 _rate_limits = defaultdict(lambda: defaultdict(list))
 
+# ---- Bloqueo por intentos fallidos de login ----
+# {email: [timestamps de intentos fallidos]}
+_login_intentos_fallidos = defaultdict(list)
+LOGIN_MAX_INTENTOS = 5
+LOGIN_BLOQUEO_SEGUNDOS = 900  # 15 minutos
+
+
+def registrar_login_fallido(email: str):
+    """Registra un intento fallido de login."""
+    _login_intentos_fallidos[email.lower()].append(_time.time())
+
+
+def esta_bloqueado_login(email: str) -> tuple:
+    """Verifica si el email está bloqueado. Retorna (bloqueado, minutos_restantes)."""
+    email = email.lower()
+    now = _time.time()
+    # Limpiar intentos fuera de la ventana
+    _login_intentos_fallidos[email] = [
+        t for t in _login_intentos_fallidos[email]
+        if now - t < LOGIN_BLOQUEO_SEGUNDOS
+    ]
+    intentos = len(_login_intentos_fallidos[email])
+    if intentos >= LOGIN_MAX_INTENTOS:
+        ultimo = max(_login_intentos_fallidos[email])
+        restante = int((LOGIN_BLOQUEO_SEGUNDOS - (now - ultimo)) / 60) + 1
+        return True, restante
+    return False, 0
+
+
+def limpiar_login_fallidos(email: str):
+    """Limpia los intentos fallidos tras un login exitoso."""
+    _login_intentos_fallidos.pop(email.lower(), None)
+
+
+# ---- Rate limiting por IP en rutas públicas ----
+# {ip: {ruta: [timestamps]}}
+_ip_rate_limits = defaultdict(lambda: defaultdict(list))
+
+IP_RATE_LIMITS = {
+    "/login": (10, 300),         # 10 intentos / 5 min
+    "/registro": (5, 300),       # 5 registros / 5 min
+    "/recuperar": (5, 300),      # 5 solicitudes / 5 min
+}
+
+
+def check_ip_rate_limit(ip: str, ruta: str) -> bool:
+    """Verifica rate limit por IP. Retorna True si OK."""
+    if ruta not in IP_RATE_LIMITS:
+        return True
+    max_req, window = IP_RATE_LIMITS[ruta]
+    now = _time.time()
+    _ip_rate_limits[ip][ruta] = [
+        t for t in _ip_rate_limits[ip][ruta] if now - t < window
+    ]
+    if len(_ip_rate_limits[ip][ruta]) >= max_req:
+        return False
+    _ip_rate_limits[ip][ruta].append(now)
+    return True
+
 # Limites: (max_requests, window_seconds)
 RATE_LIMITS = {
     "/api/generar/copy": (20, 3600),        # 20 copys/hora
@@ -716,14 +775,33 @@ async def login_page(request: Request):
 
 @app.post("/login")
 async def login_submit(request: Request, email: str = Form(...), password: str = Form(...)):
+    # Rate limiting por IP
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_ip_rate_limit(client_ip, "/login"):
+        return templates.TemplateResponse(request, "login.html", context={
+            "error": "Demasiados intentos. Espera unos minutos antes de volver a intentarlo."
+        })
+
+    # Bloqueo por intentos fallidos
+    bloqueado, minutos = esta_bloqueado_login(email)
+    if bloqueado:
+        return templates.TemplateResponse(request, "login.html", context={
+            "error": f"Cuenta bloqueada temporalmente por seguridad. Reint\u00e9ntalo en {minutos} minutos."
+        })
+
     db = get_db()
     user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
     db.close()
     if not user or not verificar_password(password, user["password_hash"]):
-        return templates.TemplateResponse(request, "login.html", context={
-            "error": "Email o contrase\u00f1a incorrectos"
-        })
-    # Migrar hash legacy a bcrypt si es necesario
+        registrar_login_fallido(email)
+        intentos_restantes = LOGIN_MAX_INTENTOS - len(_login_intentos_fallidos.get(email.lower(), []))
+        msg = "Email o contrase\u00f1a incorrectos"
+        if 0 < intentos_restantes <= 2:
+            msg += f". Te quedan {intentos_restantes} intentos antes del bloqueo temporal."
+        return templates.TemplateResponse(request, "login.html", context={"error": msg})
+
+    # Login exitoso
+    limpiar_login_fallidos(email)
     _migrar_password_si_legacy(user["id"], password, user["password_hash"])
     request.session["user_id"] = user["id"]
     return RedirectResponse("/dashboard", status_code=303)
@@ -737,6 +815,12 @@ async def registro_page(request: Request):
 @app.post("/registro")
 async def registro_submit(request: Request, nombre: str = Form(...),
                            email: str = Form(...), password: str = Form(...)):
+    # Rate limiting por IP
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_ip_rate_limit(client_ip, "/registro"):
+        return templates.TemplateResponse(request, "registro.html", context={
+            "error": "Demasiados intentos de registro. Espera unos minutos."
+        })
     # Sanitizar
     nombre = sanitizar_texto(nombre, 100)
     email = sanitizar_texto(email, 200).lower()
@@ -884,6 +968,13 @@ async def recuperar_page(request: Request):
 
 @app.post("/recuperar")
 async def recuperar_submit(request: Request, email: str = Form(...)):
+    # Rate limiting por IP
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_ip_rate_limit(client_ip, "/recuperar"):
+        return templates.TemplateResponse(request, "recuperar.html", context={
+            "error": "Demasiados intentos. Espera unos minutos.",
+            "success": None, "reset_link": None,
+        })
     db = get_db()
     user = db.execute("SELECT * FROM usuarios WHERE email = ?", (email,)).fetchone()
     if not user:
@@ -1753,6 +1844,99 @@ async def api_opciones(request: Request):
         "tipos_publicacion": tipos_publicacion,
         "movimientos_video": movimientos,
     })
+
+
+# ============================================================
+# CRON JOBS (llamar periódicamente desde Railway Cron o similar)
+# ============================================================
+
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
+
+
+@app.get("/cron/trial-reminder")
+async def cron_trial_reminder(request: Request):
+    """Envía recordatorio a usuarios cuyo trial expira en 2 días.
+    Protegido por CRON_SECRET para evitar acceso no autorizado.
+    Llamar: GET /cron/trial-reminder?secret=<CRON_SECRET>
+    """
+    token = request.query_params.get("secret", "")
+    if not CRON_SECRET or token != CRON_SECRET:
+        raise HTTPException(status_code=404)
+
+    from web.email_service import enviar_trial_expirando
+
+    db = get_db()
+    # Buscar usuarios en trial con 1-3 días restantes
+    ahora = datetime.utcnow()
+    limite_min = (ahora + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+    limite_max = (ahora + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
+
+    usuarios_trial = db.execute(
+        """SELECT id, email, nombre, trial_ends_at FROM usuarios
+           WHERE plan = 'trial' AND trial_ends_at > ? AND trial_ends_at <= ?
+           AND email_verificado = 1""",
+        (limite_min, limite_max)
+    ).fetchall()
+    db.close()
+
+    enviados = 0
+    for u in usuarios_trial:
+        try:
+            fin = datetime.strptime(u["trial_ends_at"], "%Y-%m-%d %H:%M:%S")
+            dias = max(1, (fin - ahora).days)
+            if enviar_trial_expirando(u["email"], u["nombre"], dias):
+                enviados += 1
+        except Exception as e:
+            logger.error("Trial reminder failed for user %s: %s", u["id"], e)
+
+    logger.info("Trial reminder cron: %d emails sent out of %d users", enviados, len(usuarios_trial))
+    return JSONResponse({"ok": True, "enviados": enviados, "total": len(usuarios_trial)})
+
+
+@app.get("/cron/backup")
+async def cron_backup(request: Request):
+    """Crea backup de la base de datos SQLite.
+    Protegido por CRON_SECRET. Retención: últimos 7 backups.
+    Llamar: GET /cron/backup?secret=<CRON_SECRET>
+    """
+    token = request.query_params.get("secret", "")
+    if not CRON_SECRET or token != CRON_SECRET:
+        raise HTTPException(status_code=404)
+
+    import shutil
+    import glob as _glob
+
+    backup_dir = DB_PATH.parent / "backups"
+    backup_dir.mkdir(exist_ok=True)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    backup_path = backup_dir / f"esteticai_{timestamp}.db"
+
+    try:
+        # Usar backup API de SQLite para copia consistente
+        src_db = sqlite3.connect(str(DB_PATH))
+        dst_db = sqlite3.connect(str(backup_path))
+        src_db.backup(dst_db)
+        dst_db.close()
+        src_db.close()
+
+        # Retención: mantener solo los últimos 7 backups
+        backups = sorted(backup_dir.glob("esteticai_*.db"))
+        while len(backups) > 7:
+            oldest = backups.pop(0)
+            oldest.unlink()
+            logger.info("Deleted old backup: %s", oldest.name)
+
+        size_kb = backup_path.stat().st_size // 1024
+        logger.info("Backup created: %s (%d KB)", backup_path.name, size_kb)
+        return JSONResponse({
+            "ok": True, "file": backup_path.name, "size_kb": size_kb,
+            "backups_total": len(list(backup_dir.glob("esteticai_*.db"))),
+        })
+
+    except Exception as e:
+        logger.error("Backup failed: %s", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # ============================================================

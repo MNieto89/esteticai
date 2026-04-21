@@ -192,3 +192,29 @@ def enviar_cuenta_eliminada(to: str, nombre: str) -> bool:
         </p>
     """)
     return enviar_email(to, "Tu cuenta ha sido eliminada - Esteticai", html)
+
+
+def enviar_trial_expirando(to: str, nombre: str, dias_restantes: int) -> bool:
+    """Envía aviso de que el trial está a punto de expirar."""
+    html = _plantilla_base(f"""
+        <h2 style="color:#333; margin-top:0;">Tu prueba gratuita termina pronto</h2>
+        <p style="color:#555; line-height:1.6;">
+            Hola {nombre}, te quedan <strong>{dias_restantes} d&iacute;as</strong>
+            de tu periodo de prueba en Esteticai.
+        </p>
+        <p style="color:#555; line-height:1.6;">
+            Cuando termine, pasar&aacute;s al plan gratuito con funcionalidades limitadas.
+            Para seguir creando contenido profesional sin l&iacute;mites, activa un plan:
+        </p>
+        <div style="text-align:center; margin:28px 0;">
+            <a href="{BASE_URL}/upgrade"
+               style="display:inline-block; background:#e86586; color:#fff; padding:14px 32px;
+                      border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
+                Ver planes y precios
+            </a>
+        </div>
+        <p style="color:#999; font-size:13px;">
+            Si tienes dudas, escr&iacute;benos a hola@esteticai.com
+        </p>
+    """)
+    return enviar_email(to, f"Tu prueba gratuita termina en {dias_restantes} d\u00edas - Esteticai", html)

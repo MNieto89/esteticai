@@ -1,0 +1,17 @@
+{
+  "name": "Esteticai",
+  "short_name": "Esteticai",
+  "description": "Genera contenido profesional para redes sociales con IA",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8f4f5",
+  "theme_color": "#e86586",
+  "icons": [
+    {
+      "src": "/static/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
