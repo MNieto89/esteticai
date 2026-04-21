@@ -673,6 +673,14 @@ body {
     object-fit: cover;
     border-radius: 8px;
     margin-bottom: 8px;
+    background: linear-gradient(110deg, #f0f0f0 25%, #e8e8e8 37%, #f0f0f0 63%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+.historial-img.loaded { animation: none; background: transparent; }
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 .historial-preview {
     font-size: 13px;

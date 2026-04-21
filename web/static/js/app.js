@@ -116,7 +116,7 @@ function cerrarOnboarding() {
     localStorage.setItem('esteticai_onboarding_visto', '1');
 }
 
-// Iniciar onboarding al cargar
+// Iniciar onboarding al cargar + lazy load de imágenes
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(iniciarOnboarding, 500);
     // Cookie banner
@@ -124,6 +124,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const banner = document.getElementById('cookie-banner');
         if (banner) banner.style.display = '';
     }
+    // Marcar imágenes del historial como loaded cuando terminan de cargar
+    document.querySelectorAll('.historial-img').forEach(img => {
+        if (img.complete) { img.classList.add('loaded'); }
+        else { img.addEventListener('load', () => img.classList.add('loaded')); }
+        img.addEventListener('error', () => img.classList.add('loaded'));  // Quitar shimmer en error también
+    });
 });
 
 function aceptarCookies() {
@@ -202,11 +208,29 @@ async function apiCall(url, data) {
         if (res.status === 429) {
             mostrarToast(json.error, 'warning', 6000);
         } else if (res.status === 401) {
-            mostrarToast('Tu sesion ha expirado. Redirigiendo...', 'error');
-            setTimeout(() => window.location.href = '/login', 1500);
+            mostrarSesionExpirada();
+        } else if (res.status >= 500) {
+            mostrarToast(json.error || 'Error del servidor. Intentalo de nuevo.', 'error', 5000);
         }
     }
     return json;
+}
+
+function mostrarSesionExpirada() {
+    // Evitar mostrar el overlay multiples veces
+    if (document.getElementById('sesion-expirada-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'sesion-expirada-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:32px;text-align:center;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+            <div style="font-size:40px;margin-bottom:12px;">&#128274;</div>
+            <h3 style="margin:0 0 8px;font-size:18px;">Sesi\u00f3n expirada</h3>
+            <p style="color:#888;font-size:14px;margin:0 0 20px;">Tu sesi\u00f3n ha caducado por seguridad. Inicia sesi\u00f3n de nuevo para continuar.</p>
+            <a href="/login" class="btn btn-primary" style="display:inline-block;padding:10px 32px;">Iniciar sesi\u00f3n</a>
+        </div>
+    `;
+    document.body.appendChild(overlay);
 }
 
 
@@ -554,15 +578,11 @@ async function mejorarFoto() {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
     if (fotoSeleccionada.size > maxSize) {
-        const resultDiv = document.getElementById('result-foto');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div>La foto es demasiado grande. Maximo 10MB.</div>';
+        mostrarToast('La foto es demasiado grande. Maximo 10MB.', 'error');
         return;
     }
     if (!allowedTypes.includes(fotoSeleccionada.type)) {
-        const resultDiv = document.getElementById('result-foto');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div>Formato no soportado. Usa JPG, PNG o WebP.</div>';
+        mostrarToast('Formato no soportado. Usa JPG, PNG o WebP.', 'error');
         return;
     }
 
@@ -669,12 +689,12 @@ function previewAD(input, tipo) {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
     if (file.size > maxSize) {
-        alert('La foto es demasiado grande. Maximo 10MB.');
+        mostrarToast('La foto es demasiado grande. Maximo 10MB.', 'error');
         input.value = '';
         return;
     }
     if (!allowedTypes.includes(file.type)) {
-        alert('Formato no soportado. Usa JPG, PNG o WebP.');
+        mostrarToast('Formato no soportado. Usa JPG, PNG o WebP.', 'error');
         input.value = '';
         return;
     }
@@ -814,27 +834,42 @@ function descargarImagen(src, nombre) {
 
 function copiarTexto(btn) {
     const texto = decodeURIComponent(btn.dataset.copy);
-    navigator.clipboard.writeText(texto).then(() => {
-        const original = btn.textContent;
-        btn.textContent = 'Copiado!';
+    const original = btn.textContent;
+
+    function marcarCopiado() {
+        btn.textContent = '\u2713 Copiado';
         btn.style.background = '#27ae60';
         btn.style.color = '#fff';
+        btn.style.borderColor = '#27ae60';
+        mostrarToast('Texto copiado al portapapeles', 'success', 2000);
         setTimeout(() => {
             btn.textContent = original;
             btn.style.background = '';
             btn.style.color = '';
+            btn.style.borderColor = '';
         }, 2000);
-    }).catch(() => {
-        // Fallback para navegadores sin clipboard API
-        const ta = document.createElement('textarea');
-        ta.value = texto;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        btn.textContent = 'Copiado!';
-        setTimeout(() => { btn.textContent = 'Copiar copy'; }, 2000);
-    });
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(texto).then(marcarCopiado).catch(() => {
+            _copiarFallback(texto);
+            marcarCopiado();
+        });
+    } else {
+        _copiarFallback(texto);
+        marcarCopiado();
+    }
+}
+
+function _copiarFallback(texto) {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
 }
 
 
@@ -844,7 +879,7 @@ function copiarTexto(btn) {
 
 async function exportarCalendarioPDF() {
     if (!window._ultimoCalendario) {
-        alert('Genera un calendario primero');
+        mostrarToast('Genera un calendario primero', 'warning');
         return;
     }
 
@@ -860,11 +895,12 @@ async function exportarCalendarioPDF() {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            mostrarToast('PDF descargado', 'success', 2000);
         } else {
-            alert(data.error || 'Error al generar el PDF');
+            mostrarToast(data.error || 'Error al generar el PDF', 'error');
         }
     } catch (e) {
-        alert('Error de conexion: ' + e.message);
+        mostrarToast('Error de conexion: ' + e.message, 'error');
     }
 }
 
