@@ -39,6 +39,7 @@
         <button class="btn btn-primary btn-sm" onclick="aceptarCookies()">Aceptar</button>
     </div>
     <script src="/static/js/app.js"></script>
+    <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

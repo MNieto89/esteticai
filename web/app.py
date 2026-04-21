@@ -32,13 +32,35 @@ class RequestIdFilter(logging.Filter):
         return True
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [%(request_id)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+class JsonFormatter(logging.Formatter):
+    """Formato JSON para logs en producción (fácil de parsear en Railway/Datadog)."""
+    def format(self, record):
+        import json as _json
+        log_obj = {
+            "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "rid": getattr(record, "request_id", "-"),
+            "msg": record.getMessage(),
+            "logger": record.name,
+        }
+        if record.exc_info and record.exc_info[0]:
+            log_obj["exc"] = self.formatException(record.exc_info)
+        return _json.dumps(log_obj, ensure_ascii=False)
+
+
+# Configurar logging: JSON en producción, texto legible en desarrollo
+_is_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
+_handler = logging.StreamHandler()
+if _is_railway:
+    _handler.setFormatter(JsonFormatter())
+else:
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] [%(request_id)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+_handler.addFilter(RequestIdFilter())
+logging.basicConfig(level=logging.INFO, handlers=[_handler])
 logger = logging.getLogger("esteticai")
-logger.addFilter(RequestIdFilter())
 
 from fastapi import FastAPI, Request, HTTPException, Depends, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -74,6 +96,24 @@ else:
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 app = FastAPI(title="Esteticai", version="1.0")
+
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Esteticai starting up (env=%s)", os.environ.get("RAILWAY_ENVIRONMENT", "local"))
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Esteticai shutting down gracefully")
+    # Cerrar cualquier conexión DB pendiente si existe
+    try:
+        db = get_db()
+        db.execute("PRAGMA optimize")  # Optimizar estadísticas antes de cerrar
+        db.close()
+    except Exception:
+        pass
+
 
 # Compresión Gzip (reduce tamaño de HTML, CSS, JS ~70%)
 from starlette.middleware.gzip import GZipMiddleware
@@ -479,6 +519,18 @@ async def sitemap_xml():
 </urlset>"""
     from starlette.responses import Response
     return Response(content=sitemap, media_type="application/xml")
+
+
+@app.get("/sw.js")
+async def service_worker():
+    """Sirve el Service Worker desde raíz con scope / permitido."""
+    sw_path = BASE_DIR / "static" / "sw.js"
+    from starlette.responses import FileResponse
+    return FileResponse(
+        sw_path,
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"}
+    )
 
 
 # ============================================================

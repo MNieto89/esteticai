@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Eliminar cuenta - Esteticai{% endblock %}
 {% block nav %}
-<nav class="navbar">
+<nav class="navbar" role="navigation" aria-label="Navegaci&oacute;n">
     <div class="nav-brand">Esteticai</div>
     <div class="nav-actions">
         <a href="/dashboard" class="nav-link">Dashboard</a>
@@ -46,10 +46,10 @@
         </form>
 
         <!-- Modal de confirmación final -->
-        <div id="modal-eliminar" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+        <div id="modal-eliminar" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
             <div style="background:white; border-radius:16px; padding:32px; max-width:400px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
                 <div style="font-size:48px; margin-bottom:12px;">&#9888;&#65039;</div>
-                <h3 style="color:var(--error); margin-bottom:8px;">&#191;Est&#225;s segura?</h3>
+                <h3 id="modal-titulo" style="color:var(--error); margin-bottom:8px;">&#191;Est&#225;s segura?</h3>
                 <p style="font-size:14px; color:var(--gris); margin-bottom:24px; line-height:1.5;">
                     Se eliminar&#225;n todos tus datos de forma permanente. Esta acci&#243;n no se puede deshacer.
                 </p>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Admin - Esteticai{% endblock %}
 {% block nav %}
-<nav class="navbar">
+<nav class="navbar" role="navigation" aria-label="Navegaci&oacute;n admin">
     <div class="nav-brand">Esteticai <span style="font-size:12px; color:var(--rosa);">ADMIN</span></div>
     <div class="nav-actions">
         <a href="/dashboard" class="nav-link">Dashboard</a>
@@ -61,16 +61,16 @@
     <!-- TABLA DE USUARIOS -->
     <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06); overflow-x:auto;">
         <h2 style="margin-top:0; font-size:18px;">Usuarios ({{ stats.total_usuarios }})</h2>
-        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;" aria-label="Tabla de usuarios">
             <thead>
                 <tr style="border-bottom:2px solid #eee; text-align:left;">
-                    <th style="padding:8px;">ID</th>
-                    <th style="padding:8px;">Nombre</th>
-                    <th style="padding:8px;">Email</th>
-                    <th style="padding:8px;">Plan</th>
-                    <th style="padding:8px;">Verificado</th>
-                    <th style="padding:8px;">Registro</th>
-                    <th style="padding:8px;">Generaciones</th>
+                    <th scope="col" style="padding:8px;">ID</th>
+                    <th scope="col" style="padding:8px;">Nombre</th>
+                    <th scope="col" style="padding:8px;">Email</th>
+                    <th scope="col" style="padding:8px;">Plan</th>
+                    <th scope="col" style="padding:8px;">Verificado</th>
+                    <th scope="col" style="padding:8px;">Registro</th>
+                    <th scope="col" style="padding:8px;">Generaciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -92,12 +92,12 @@
     <!-- GENERACIONES RECIENTES -->
     <div style="background:white; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06); margin-top:20px; overflow-x:auto;">
         <h2 style="margin-top:0; font-size:18px;">Generaciones recientes</h2>
-        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px;" aria-label="Generaciones recientes">
             <thead>
                 <tr style="border-bottom:2px solid #eee; text-align:left;">
-                    <th style="padding:8px;">Fecha</th>
-                    <th style="padding:8px;">Usuario</th>
-                    <th style="padding:8px;">Tipo</th>
+                    <th scope="col" style="padding:8px;">Fecha</th>
+                    <th scope="col" style="padding:8px;">Usuario</th>
+                    <th scope="col" style="padding:8px;">Tipo</th>
                 </tr>
             </thead>
             <tbody>
