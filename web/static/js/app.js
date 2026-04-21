@@ -119,7 +119,18 @@ function cerrarOnboarding() {
 // Iniciar onboarding al cargar
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(iniciarOnboarding, 500);
+    // Cookie banner
+    if (!localStorage.getItem('esteticai_cookies_aceptadas')) {
+        const banner = document.getElementById('cookie-banner');
+        if (banner) banner.style.display = '';
+    }
 });
+
+function aceptarCookies() {
+    localStorage.setItem('esteticai_cookies_aceptadas', '1');
+    const banner = document.getElementById('cookie-banner');
+    if (banner) banner.style.display = 'none';
+}
 
 // Toggle cards
 document.querySelectorAll('.gen-card').forEach(card => {

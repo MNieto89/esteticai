@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Precios - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar navbar-home">
+    <div class="nav-brand"><a href="/" style="color:inherit;text-decoration:none;">Esteticai</a></div>
+    <div class="nav-actions">
+        <a href="/login" class="nav-link">Iniciar sesi&oacute;n</a>
+        <a href="/registro" class="btn btn-primary btn-sm">Empezar gratis</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="precios-hero">
+    <h1>Planes y precios</h1>
+    <p class="precios-sub">Elige el plan que mejor se adapta a tu negocio. Sin permanencia, cancela cuando quieras.</p>
+</div>
+
+<div class="precios-grid">
+    <!-- STARTER -->
+    <div class="precio-card">
+        <div class="precio-header">
+            <h3>Starter</h3>
+            <p class="precio-desc">Para empezar a profesionalizar tus redes</p>
+        </div>
+        <div class="precio-amount">
+            <span class="precio-moneda">&euro;</span>
+            <span class="precio-num">59</span>
+            <span class="precio-periodo">/mes</span>
+        </div>
+        <ul class="precio-features">
+            <li class="included">Generador de copys ilimitados</li>
+            <li class="included">Calendario semanal</li>
+            <li class="included">15 im&aacute;genes con IA al mes</li>
+            <li class="included">5 composiciones Antes/Despu&eacute;s</li>
+            <li class="included">1 perfil de negocio</li>
+            <li class="included">Exportar calendario a PDF</li>
+            <li class="not-included">Videos para Reels</li>
+            <li class="not-included">Mejora de foto real</li>
+            <li class="not-included">Soporte prioritario</li>
+        </ul>
+        <a href="/registro" class="btn btn-secondary btn-full">Empezar con Starter</a>
+    </div>
+
+    <!-- PRO (destacado) -->
+    <div class="precio-card precio-destacado">
+        <div class="precio-badge">M&aacute;s popular</div>
+        <div class="precio-header">
+            <h3>Pro</h3>
+            <p class="precio-desc">Todo lo que necesitas para brillar en redes</p>
+        </div>
+        <div class="precio-amount">
+            <span class="precio-moneda">&euro;</span>
+            <span class="precio-num">149</span>
+            <span class="precio-periodo">/mes</span>
+        </div>
+        <ul class="precio-features">
+            <li class="included">Generador de copys ilimitados</li>
+            <li class="included">Calendario semanal</li>
+            <li class="included">50 im&aacute;genes con IA al mes</li>
+            <li class="included">20 composiciones Antes/Despu&eacute;s</li>
+            <li class="included">Mejora de foto real (30/mes)</li>
+            <li class="included">10 videos para Reels al mes</li>
+            <li class="included">Exportar calendario a PDF</li>
+            <li class="included">1 perfil de negocio</li>
+            <li class="not-included">Soporte prioritario</li>
+        </ul>
+        <a href="/registro" class="btn btn-primary btn-full">Empezar con Pro</a>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="precio-card">
+        <div class="precio-header">
+            <h3>Business</h3>
+            <p class="precio-desc">Para cl&iacute;nicas y centros con alto volumen</p>
+        </div>
+        <div class="precio-amount">
+            <span class="precio-moneda">&euro;</span>
+            <span class="precio-num">249</span>
+            <span class="precio-periodo">/mes</span>
+        </div>
+        <ul class="precio-features">
+            <li class="included">Generador de copys ilimitados</li>
+            <li class="included">Calendario semanal</li>
+            <li class="included">Im&aacute;genes ilimitadas</li>
+            <li class="included">Composiciones ilimitadas</li>
+            <li class="included">Mejora de foto real ilimitada</li>
+            <li class="included">30 videos para Reels al mes</li>
+            <li class="included">Hasta 3 perfiles de negocio</li>
+            <li class="included">Exportar calendario a PDF</li>
+            <li class="included">Soporte prioritario por email</li>
+        </ul>
+        <a href="/registro" class="btn btn-secondary btn-full">Empezar con Business</a>
+    </div>
+</div>
+
+<div class="precios-faq">
+    <h2>Preguntas frecuentes</h2>
+    <div class="faq-grid">
+        <div class="faq-item">
+            <h4>&iquest;Puedo cambiar de plan?</h4>
+            <p>S&iacute;, puedes subir o bajar de plan en cualquier momento. El cambio se aplica en el siguiente ciclo de facturaci&oacute;n.</p>
+        </div>
+        <div class="faq-item">
+            <h4>&iquest;Hay compromiso de permanencia?</h4>
+            <p>No. Todos los planes son mensuales y puedes cancelar cuando quieras sin penalizaci&oacute;n.</p>
+        </div>
+        <div class="faq-item">
+            <h4>&iquest;Puedo probarlo gratis?</h4>
+            <p>S&iacute;. Todos los planes incluyen 7 d&iacute;as de prueba gratuita para que veas c&oacute;mo funciona con tu negocio.</p>
+        </div>
+        <div class="faq-item">
+            <h4>&iquest;Qu&eacute; pasa con mi contenido si cancelo?</h4>
+            <p>Tu contenido generado sigue disponible para descarga durante 30 d&iacute;as despu&eacute;s de cancelar.</p>
+        </div>
+    </div>
+</div>
+
+<div class="landing-section">
+    <div class="landing-content landing-cta">
+        <h2>&iquest;Tienes dudas?</h2>
+        <p>Escr&iacute;benos a <a href="mailto:hola@esteticai.com" style="color:var(--rosa);">hola@esteticai.com</a> y te ayudamos a elegir el plan perfecto para tu negocio.</p>
+    </div>
+</div>
+
+<footer class="landing-footer">
+    <p>&copy; Esteticai 2026 &mdash; <a href="/privacidad">Privacidad</a> &middot; <a href="/legal">Aviso legal</a> &middot; <a href="/cookies">Cookies</a></p>
+</footer>
+{% endblock %}

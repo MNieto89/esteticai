@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Esteticai - Genera contenido profesional para redes sociales con IA. Copys, im&aacute;genes, videos y calendarios para tu negocio de est&eacute;tica.">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="{% block og_title %}Esteticai - IA para profesionales de la est&eacute;tica{% endblock %}">
+    <meta property="og:description" content="Genera copys, im&aacute;genes, videos y calendarios para tu negocio de est&eacute;tica con inteligencia artificial.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="es_ES">
+    <link rel="canonical" href="https://esteticai.com">
     <title>{% block title %}Esteticai{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -11,6 +18,11 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+    <!-- Cookie banner -->
+    <div class="cookie-banner" id="cookie-banner" style="display:none;">
+        <span>Usamos cookies esenciales para que la plataforma funcione. <a href="/cookies">M&aacute;s info</a></span>
+        <button class="btn btn-primary btn-sm" onclick="aceptarCookies()">Aceptar</button>
+    </div>
     <script src="/static/js/app.js"></script>
     {% block scripts %}{% endblock %}
 </body>

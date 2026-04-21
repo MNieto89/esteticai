@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Esteticai - IA para profesionales de la est&eacute;tica{% endblock %}
+{% block title %}Esteticai - Contenido para redes sociales con IA para profesionales de la est&eacute;tica{% endblock %}
 {% block nav %}
 <nav class="navbar navbar-home">
     <div class="nav-brand">Esteticai</div>
     <div class="nav-actions">
+        <a href="/precios" class="nav-link">Precios</a>
         <a href="/login" class="nav-link">Iniciar sesi&oacute;n</a>
         <a href="/registro" class="btn btn-primary btn-sm">Empezar gratis</a>
     </div>
@@ -12,33 +13,72 @@
 {% block content %}
 <div class="hero">
     <div class="hero-content">
-        <h1>Esteticai</h1>
-        <p class="hero-sub">Tu agente de IA para crear contenido de redes sociales profesional en segundos</p>
-        <p class="hero-desc">Genera copies, im&aacute;genes y videos para Instagram y TikTok adaptados a tu negocio de est&eacute;tica. Solo elige tu servicio y el tipo de post. La IA hace el resto.</p>
+        <span class="hero-badge">IA especializada en est&eacute;tica y belleza</span>
+        <h1>Tu contenido de redes sociales profesional en segundos</h1>
+        <p class="hero-sub">Genera copys, im&aacute;genes, videos y calendarios adaptados a tu negocio. Sin contratar community manager. Sin perder horas creando contenido.</p>
         <div class="hero-buttons">
-            <a href="/registro" class="btn btn-primary">Empezar gratis</a>
-            <a href="/login" class="btn btn-secondary">Ya tengo cuenta</a>
+            <a href="/registro" class="btn btn-primary btn-lg">Probar 7 d&iacute;as gratis</a>
+            <a href="/precios" class="btn btn-secondary">Ver precios</a>
         </div>
-        <div class="hero-features">
-            <div class="feature">
-                <span class="feature-icon">&#9997;</span>
-                <span>Copies con hashtags y CTAs</span>
+        <p class="hero-trust">Desde 59&euro;/mes &middot; Sin permanencia &middot; Cancela cuando quieras</p>
+    </div>
+</div>
+
+<div class="landing-section">
+    <div class="landing-content">
+        <span class="section-label">El problema</span>
+        <h2>&iquest;Te suena esto?</h2>
+        <div class="problem-grid">
+            <div class="problem-card">
+                <span class="problem-icon">&#9200;</span>
+                <p>Pasas horas pensando qu&eacute; publicar y al final no publicas nada</p>
             </div>
-            <div class="feature">
-                <span class="feature-icon">&#128247;</span>
-                <span>Fotos profesionales con IA</span>
+            <div class="problem-card">
+                <span class="problem-icon">&#128176;</span>
+                <p>Un community manager cuesta 300-800&euro;/mes y no entiende tu sector</p>
             </div>
-            <div class="feature">
-                <span class="feature-icon">&#127910;</span>
-                <span>Videos para Reels y TikTok</span>
+            <div class="problem-card">
+                <span class="problem-icon">&#128148;</span>
+                <p>Tus redes est&aacute;n abandonadas y no atraen nuevas clientas</p>
             </div>
-            <div class="feature">
-                <span class="feature-icon">&#128260;</span>
-                <span>Composiciones Antes y Despu&eacute;s</span>
+        </div>
+    </div>
+</div>
+
+<div class="landing-section landing-dark">
+    <div class="landing-content">
+        <span class="section-label">La soluci&oacute;n</span>
+        <h2>6 herramientas de IA dise&ntilde;adas para est&eacute;tica</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-card-icon">&#9997;</div>
+                <h3>Copys profesionales</h3>
+                <p>Textos con hashtags, CTAs y estrategia para cada tipo de post. Educativos, testimonios, promociones y m&aacute;s.</p>
             </div>
-            <div class="feature">
-                <span class="feature-icon">&#128197;</span>
-                <span>Calendario semanal completo</span>
+            <div class="feature-card">
+                <div class="feature-card-icon">&#128247;</div>
+                <h3>Im&aacute;genes con IA</h3>
+                <p>Fotos profesionales generadas para tus servicios. Perfectas para feed, stories y portadas de Reels.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">&#127910;</div>
+                <h3>Videos para Reels</h3>
+                <p>Convierte im&aacute;genes en videos animados para Reels y TikTok. Zoom, panor&aacute;mica, revelaci&oacute;n dram&aacute;tica.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">&#128260;</div>
+                <h3>Antes y Despu&eacute;s</h3>
+                <p>Sube las dos fotos y genera composiciones profesionales listas para publicar. 4 plantillas diferentes.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">&#10024;</div>
+                <h3>Mejora de fotos</h3>
+                <p>Sube tu foto real y la transformamos: fondo profesional, mejor calidad y aspecto de estudio.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">&#128197;</div>
+                <h3>Calendario semanal</h3>
+                <p>Plan completo de 7 d&iacute;as con estrategia, copys, horarios y formatos. Exportable a PDF.</p>
             </div>
         </div>
     </div>
@@ -46,22 +86,23 @@
 
 <div class="landing-section">
     <div class="landing-content">
-        <h2>C&oacute;mo funciona</h2>
+        <span class="section-label">C&oacute;mo funciona</span>
+        <h2>De 0 a publicar en 2 minutos</h2>
         <div class="steps">
             <div class="step">
                 <div class="step-num">1</div>
-                <h3>Crea tu perfil</h3>
-                <p>Reg&iacute;strate y configura tu negocio: servicios, productos, tono de voz y redes sociales.</p>
+                <h3>Configura tu negocio</h3>
+                <p>Tus servicios, tu tono de voz, tus redes. La IA aprende todo sobre tu marca para crear contenido a medida.</p>
             </div>
             <div class="step">
                 <div class="step-num">2</div>
-                <h3>Elige qu&eacute; crear</h3>
-                <p>Selecciona: copy, imagen, video o calendario semanal. Elige el servicio y el tipo de post.</p>
+                <h3>Elige y genera</h3>
+                <p>Selecciona el tipo de contenido, el servicio y pulsa generar. La IA crea todo en segundos.</p>
             </div>
             <div class="step">
                 <div class="step-num">3</div>
-                <h3>Publica y crece</h3>
-                <p>En segundos tienes contenido profesional listo para copiar y publicar en tus redes.</p>
+                <h3>Descarga y publica</h3>
+                <p>Copia el texto, descarga la imagen y publica. Contenido profesional sin esfuerzo.</p>
             </div>
         </div>
     </div>
@@ -72,30 +113,68 @@
         <h2>Para qui&eacute;n es Esteticai</h2>
         <div class="audience-grid">
             <div class="audience-card">
-                <h3>Esteticistas y cl&iacute;nicas</h3>
-                <p>Contenido profesional sin dedicar horas al marketing. Tu especialidad es la est&eacute;tica, la nuestra es el contenido.</p>
+                <h3>&#128142; Cl&iacute;nicas de est&eacute;tica</h3>
+                <p>Facial, corporal, l&aacute;ser, aparatolog&iacute;a. Contenido que transmite profesionalidad y resultados.</p>
             </div>
             <div class="audience-card">
-                <h3>Distribuidoras de marcas</h3>
-                <p>Contenido personalizado con los productos de tu marca. Diferencial frente a otras distribuidoras que publican lo mismo.</p>
+                <h3>&#128133; Centros de belleza</h3>
+                <p>Peluquer&iacute;as, centros de u&ntilde;as, maquillaje. Posts que atraen clientas y muestran tu talento.</p>
             </div>
             <div class="audience-card">
-                <h3>Centros de belleza</h3>
-                <p>Calendario semanal autom&aacute;tico con estrategia: educa, inspira, vende y conecta con tus seguidoras.</p>
+                <h3>&#127807; Spas y bienestar</h3>
+                <p>Masajes, tratamientos corporales, relax. Im&aacute;genes y textos que transmiten calma y lujo.</p>
+            </div>
+            <div class="audience-card">
+                <h3>&#128188; Distribuidoras</h3>
+                <p>Contenido personalizado con los productos de tu marca. Diferencial frente a la competencia.</p>
             </div>
         </div>
     </div>
 </div>
 
 <div class="landing-section">
+    <div class="landing-content">
+        <div class="social-proof">
+            <div class="proof-stat">
+                <span class="proof-num">26</span>
+                <span class="proof-label">Servicios est&eacute;ticos en nuestra base de conocimiento</span>
+            </div>
+            <div class="proof-stat">
+                <span class="proof-num">6</span>
+                <span class="proof-label">Herramientas de IA especializadas</span>
+            </div>
+            <div class="proof-stat">
+                <span class="proof-num">&lt;30s</span>
+                <span class="proof-label">Tiempo medio de generaci&oacute;n</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="landing-section landing-rosa">
     <div class="landing-content landing-cta">
-        <h2>Pru&eacute;balo ahora</h2>
-        <p>Reg&iacute;strate gratis y genera tu primer contenido en menos de 2 minutos.</p>
+        <h2>Empieza a crear contenido profesional hoy</h2>
+        <p>7 d&iacute;as de prueba gratuita. Sin tarjeta de cr&eacute;dito. Sin permanencia.</p>
         <a href="/registro" class="btn btn-primary btn-lg">Crear cuenta gratis</a>
+        <p class="cta-small"><a href="/precios" style="color:var(--rosa-oscuro);">Ver planes y precios</a></p>
     </div>
 </div>
 
 <footer class="landing-footer">
-    <p>&copy; Esteticai 2026 - IA especializada en est&eacute;tica y belleza</p>
+    <div class="footer-content">
+        <div class="footer-brand">
+            <strong>Esteticai</strong>
+            <p>IA especializada en est&eacute;tica y belleza</p>
+        </div>
+        <div class="footer-links">
+            <a href="/precios">Precios</a>
+            <a href="/privacidad">Privacidad</a>
+            <a href="/legal">Aviso legal</a>
+            <a href="/cookies">Cookies</a>
+        </div>
+        <div class="footer-copy">
+            <p>&copy; Esteticai 2026 &middot; hola@esteticai.com</p>
+        </div>
+    </div>
 </footer>
 {% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Pol&iacute;tica de Privacidad - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar navbar-home">
+    <div class="nav-brand"><a href="/" style="color:inherit;text-decoration:none;">Esteticai</a></div>
+    <div class="nav-actions">
+        <a href="/login" class="nav-link">Iniciar sesi&oacute;n</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="legal-container">
+    <h1>Pol&iacute;tica de Privacidad</h1>
+    <p class="legal-updated">&Uacute;ltima actualizaci&oacute;n: abril 2026</p>
+
+    <h2>1. Responsable del tratamiento</h2>
+    <p>El responsable del tratamiento de tus datos personales es Esteticai (en adelante, &ldquo;nosotros&rdquo; o &ldquo;Esteticai&rdquo;), con direcci&oacute;n de contacto: <strong>hola@esteticai.com</strong>.</p>
+    <p><em>Nota: Los datos fiscales completos del responsable se incluir&aacute;n una vez formalizada la estructura legal (aut&oacute;noma o SL).</em></p>
+
+    <h2>2. Qu&eacute; datos recogemos</h2>
+    <p>Recogemos los siguientes datos personales cuando utilizas nuestro servicio:</p>
+    <ul>
+        <li><strong>Datos de registro:</strong> nombre, email y contrase&ntilde;a (almacenada de forma cifrada con bcrypt).</li>
+        <li><strong>Datos del perfil de negocio:</strong> nombre del negocio, ciudad, tipo de negocio, servicios, productos, tono de comunicaci&oacute;n, redes sociales y usuario de Instagram.</li>
+        <li><strong>Contenido generado:</strong> copys, im&aacute;genes, videos y calendarios creados con la plataforma.</li>
+        <li><strong>Im&aacute;genes subidas:</strong> fotos que subes para mejorar o componer (antes/despu&eacute;s).</li>
+        <li><strong>Datos t&eacute;cnicos:</strong> direcci&oacute;n IP, tipo de navegador, fecha y hora de acceso.</li>
+    </ul>
+
+    <h2>3. Para qu&eacute; usamos tus datos</h2>
+    <p>Tratamos tus datos personales con las siguientes finalidades:</p>
+    <ul>
+        <li>Crear y gestionar tu cuenta de usuario.</li>
+        <li>Personalizar el contenido generado por la IA seg&uacute;n tu perfil de negocio.</li>
+        <li>Procesar las im&aacute;genes que subes para mejora y composici&oacute;n.</li>
+        <li>Mantener un historial de tu contenido generado.</li>
+        <li>Enviarte comunicaciones relacionadas con el servicio (cambios, mantenimiento).</li>
+        <li>Gestionar el pago y facturaci&oacute;n de tu suscripci&oacute;n.</li>
+    </ul>
+
+    <h2>4. Base legal del tratamiento</h2>
+    <p>El tratamiento de tus datos se basa en:</p>
+    <ul>
+        <li><strong>Ejecuci&oacute;n del contrato:</strong> para prestarte el servicio contratado (art. 6.1.b RGPD).</li>
+        <li><strong>Consentimiento:</strong> para comunicaciones comerciales y cookies no esenciales (art. 6.1.a RGPD).</li>
+        <li><strong>Inter&eacute;s leg&iacute;timo:</strong> para mejorar el servicio y prevenir fraude (art. 6.1.f RGPD).</li>
+    </ul>
+
+    <h2>5. Cu&aacute;nto tiempo conservamos tus datos</h2>
+    <ul>
+        <li><strong>Datos de cuenta:</strong> mientras mantengas la cuenta activa y 30 d&iacute;as tras la cancelaci&oacute;n.</li>
+        <li><strong>Contenido generado:</strong> mientras la cuenta est&eacute; activa.</li>
+        <li><strong>Im&aacute;genes subidas:</strong> se procesan en tiempo real y no se almacenan permanentemente en nuestros servidores. Se env&iacute;an a proveedores de IA (fal.ai) para procesamiento y se eliminan tras la generaci&oacute;n.</li>
+        <li><strong>Datos fiscales:</strong> 5 a&ntilde;os seg&uacute;n obligaci&oacute;n legal.</li>
+    </ul>
+
+    <h2>6. Con qui&eacute;n compartimos tus datos</h2>
+    <p>Compartimos datos &uacute;nicamente con los proveedores necesarios para el servicio:</p>
+    <ul>
+        <li><strong>Anthropic (Claude AI):</strong> tu perfil de negocio se env&iacute;a para generar contenido textual. <a href="https://www.anthropic.com/privacy" target="_blank">Pol&iacute;tica de privacidad</a>.</li>
+        <li><strong>fal.ai:</strong> im&aacute;genes y prompts se env&iacute;an para generaci&oacute;n de im&aacute;genes y videos. <a href="https://fal.ai/privacy" target="_blank">Pol&iacute;tica de privacidad</a>.</li>
+        <li><strong>Railway:</strong> proveedor de hosting donde se almacenan los datos. Servidores en la UE/EE.UU.</li>
+        <li><strong>Stripe:</strong> procesamiento de pagos (cuando est&eacute; activo). No almacenamos datos de tarjeta.</li>
+    </ul>
+    <p>No vendemos ni cedemos tus datos a terceros con fines comerciales.</p>
+
+    <h2>7. Transferencias internacionales</h2>
+    <p>Algunos de nuestros proveedores (Anthropic, fal.ai) pueden procesar datos fuera del Espacio Econ&oacute;mico Europeo. En estos casos, nos aseguramos de que existan garant&iacute;as adecuadas conforme al art&iacute;culo 46 del RGPD (cl&aacute;usulas contractuales tipo).</p>
+
+    <h2>8. Tus derechos</h2>
+    <p>De acuerdo con el RGPD, tienes los siguientes derechos:</p>
+    <ul>
+        <li><strong>Acceso:</strong> saber qu&eacute; datos tenemos sobre ti.</li>
+        <li><strong>Rectificaci&oacute;n:</strong> corregir datos inexactos.</li>
+        <li><strong>Supresi&oacute;n:</strong> solicitar que eliminemos tus datos.</li>
+        <li><strong>Portabilidad:</strong> recibir tus datos en formato estructurado.</li>
+        <li><strong>Oposici&oacute;n:</strong> oponerte al tratamiento de tus datos.</li>
+        <li><strong>Limitaci&oacute;n:</strong> solicitar que limitemos el uso de tus datos.</li>
+    </ul>
+    <p>Para ejercer estos derechos, escr&iacute;benos a <strong>hola@esteticai.com</strong>. Responderemos en un plazo m&aacute;ximo de 30 d&iacute;as.</p>
+    <p>Tambi&eacute;n puedes presentar una reclamaci&oacute;n ante la <a href="https://www.aepd.es" target="_blank">Agencia Espa&ntilde;ola de Protecci&oacute;n de Datos (AEPD)</a>.</p>
+
+    <h2>9. Seguridad</h2>
+    <p>Protegemos tus datos con las siguientes medidas:</p>
+    <ul>
+        <li>Contrase&ntilde;as cifradas con bcrypt (hash con salt).</li>
+        <li>Conexiones cifradas con HTTPS/TLS.</li>
+        <li>Acceso restringido a la base de datos.</li>
+        <li>API keys almacenadas como variables de entorno (no en c&oacute;digo).</li>
+    </ul>
+
+    <h2>10. Cambios en esta pol&iacute;tica</h2>
+    <p>Nos reservamos el derecho de actualizar esta pol&iacute;tica. Te notificaremos por email de cualquier cambio significativo.</p>
+</div>
+
+<footer class="landing-footer">
+    <p>&copy; Esteticai 2026 &mdash; <a href="/privacidad">Privacidad</a> &middot; <a href="/legal">Aviso legal</a> &middot; <a href="/cookies">Cookies</a></p>
+</footer>
+{% endblock %}

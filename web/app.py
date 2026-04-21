@@ -48,10 +48,81 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+
+# ============================================================
+# RATE LIMITING (en memoria, sin Redis)
+# ============================================================
+
+from collections import defaultdict
+import time as _time
+
+# {user_id: {endpoint: [timestamps]}}
+_rate_limits = defaultdict(lambda: defaultdict(list))
+
+# Limites: (max_requests, window_seconds)
+RATE_LIMITS = {
+    "/api/generar/copy": (20, 3600),        # 20 copys/hora
+    "/api/generar/imagen": (15, 3600),       # 15 imagenes/hora
+    "/api/generar/video": (5, 3600),         # 5 videos/hora
+    "/api/generar/calendario": (10, 3600),   # 10 calendarios/hora
+    "/api/mejorar-foto": (15, 3600),         # 15 fotos/hora
+    "/api/componer-antes-despues": (20, 3600),  # 20 composiciones/hora
+    "/api/calendario/pdf": (20, 3600),       # 20 PDFs/hora
+}
+
+
+def check_rate_limit(user_id, endpoint):
+    """Verifica si el usuario ha excedido el límite. Retorna True si OK, False si excedido."""
+    if endpoint not in RATE_LIMITS:
+        return True
+    max_req, window = RATE_LIMITS[endpoint]
+    now = _time.time()
+    # Limpiar timestamps viejos
+    _rate_limits[user_id][endpoint] = [
+        t for t in _rate_limits[user_id][endpoint] if now - t < window
+    ]
+    if len(_rate_limits[user_id][endpoint]) >= max_req:
+        return False
+    _rate_limits[user_id][endpoint].append(now)
+    return True
+
+
 # Health check para verificar que la app arranca
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "1.0"}
+
+
+# ============================================================
+# SEO
+# ============================================================
+
+@app.get("/robots.txt")
+async def robots_txt():
+    content = """User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /perfil/
+Disallow: /api/
+Sitemap: https://esteticai.com/sitemap.xml
+"""
+    from starlette.responses import PlainTextResponse
+    return PlainTextResponse(content)
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    sitemap = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://esteticai.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://esteticai.com/precios</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://esteticai.com/registro</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://esteticai.com/login</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://esteticai.com/privacidad</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://esteticai.com/legal</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>"""
+    from starlette.responses import Response
+    return Response(content=sitemap, media_type="application/xml")
 
 
 # ============================================================
@@ -258,6 +329,26 @@ async def home(request: Request):
     if user:
         return RedirectResponse("/dashboard", status_code=303)
     return templates.TemplateResponse(request, "home.html")
+
+
+@app.get("/precios", response_class=HTMLResponse)
+async def precios_page(request: Request):
+    return templates.TemplateResponse(request, "precios.html")
+
+
+@app.get("/privacidad", response_class=HTMLResponse)
+async def privacidad_page(request: Request):
+    return templates.TemplateResponse(request, "privacidad.html")
+
+
+@app.get("/legal", response_class=HTMLResponse)
+async def legal_page(request: Request):
+    return templates.TemplateResponse(request, "legal.html")
+
+
+@app.get("/cookies", response_class=HTMLResponse)
+async def cookies_page(request: Request):
+    return templates.TemplateResponse(request, "cookies.html")
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -603,6 +694,8 @@ async def api_generar_copy(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if not check_rate_limit(user["id"], "/api/generar/copy"):
+        return JSONResponse({"error": "Has alcanzado el l\u00edmite de generaciones. Espera un poco antes de intentarlo de nuevo."}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -637,6 +730,8 @@ async def api_generar_imagen(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if not check_rate_limit(user["id"], "/api/generar/imagen"):
+        return JSONResponse({"error": "Has alcanzado el l\u00edmite de im\u00e1genes por hora. Espera un poco."}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -668,6 +763,8 @@ async def api_generar_video(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if not check_rate_limit(user["id"], "/api/generar/video"):
+        return JSONResponse({"error": "Has alcanzado el l\u00edmite de videos por hora. Espera un poco."}, status_code=429)
 
     data = await request.json()
     url_imagen = data.get("url_imagen", "")
@@ -703,6 +800,8 @@ async def api_generar_calendario(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if not check_rate_limit(user["id"], "/api/generar/calendario"):
+        return JSONResponse({"error": "Has alcanzado el l\u00edmite de calendarios por hora."}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -852,6 +951,8 @@ async def api_mejorar_foto(
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if not check_rate_limit(user["id"], "/api/mejorar-foto"):
+        return JSONResponse({"error": "Has alcanzado el l\u00edmite de mejoras de foto por hora."}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
@@ -918,6 +1019,8 @@ async def api_componer_antes_despues(
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
+    if not check_rate_limit(user["id"], "/api/componer-antes-despues"):
+        return JSONResponse({"error": "Has alcanzado el l\u00edmite de composiciones por hora."}, status_code=429)
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)

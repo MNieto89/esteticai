@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Pol&iacute;tica de Cookies - Esteticai{% endblock %}
+{% block nav %}
+<nav class="navbar navbar-home">
+    <div class="nav-brand"><a href="/" style="color:inherit;text-decoration:none;">Esteticai</a></div>
+    <div class="nav-actions">
+        <a href="/login" class="nav-link">Iniciar sesi&oacute;n</a>
+    </div>
+</nav>
+{% endblock %}
+{% block content %}
+<div class="legal-container">
+    <h1>Pol&iacute;tica de Cookies</h1>
+    <p class="legal-updated">&Uacute;ltima actualizaci&oacute;n: abril 2026</p>
+
+    <h2>1. &iquest;Qu&eacute; son las cookies?</h2>
+    <p>Las cookies son peque&ntilde;os archivos de texto que se almacenan en tu dispositivo cuando visitas un sitio web. Se utilizan para recordar tus preferencias, mantener tu sesi&oacute;n iniciada y mejorar tu experiencia de uso.</p>
+
+    <h2>2. Cookies que utilizamos</h2>
+
+    <p><strong>Cookies esenciales (necesarias):</strong></p>
+    <ul>
+        <li><strong>session:</strong> Cookie de sesi&oacute;n para mantener tu cuenta iniciada mientras navegas. Se elimina al cerrar el navegador o al hacer logout. <em>Base legal: ejecuci&oacute;n del contrato.</em></li>
+    </ul>
+
+    <p><strong>Cookies funcionales:</strong></p>
+    <ul>
+        <li><strong>esteticai_onboarding_visto:</strong> Almacenada en localStorage. Recuerda si ya has visto el tutorial de bienvenida para no mostrarlo de nuevo. <em>Base legal: inter&eacute;s leg&iacute;timo.</em></li>
+        <li><strong>esteticai_cookies_aceptadas:</strong> Almacenada en localStorage. Recuerda tu elecci&oacute;n sobre el banner de cookies. <em>Base legal: consentimiento.</em></li>
+    </ul>
+
+    <h2>3. Cookies de terceros</h2>
+    <p>Actualmente, Esteticai <strong>no utiliza cookies de terceros</strong> (anal&iacute;tica, publicidad o seguimiento). Si en el futuro incorporamos herramientas de an&aacute;lisis, se actualizar&aacute; esta pol&iacute;tica y se solicitar&aacute; tu consentimiento.</p>
+
+    <h2>4. C&oacute;mo gestionar las cookies</h2>
+    <p>Puedes configurar tu navegador para bloquear o eliminar cookies. Ten en cuenta que si desactivas las cookies esenciales, no podr&aacute;s utilizar la plataforma con tu cuenta.</p>
+    <ul>
+        <li><a href="https://support.google.com/chrome/answer/95647" target="_blank">Google Chrome</a></li>
+        <li><a href="https://support.mozilla.org/es/kb/cookies-informacion-que-los-sitios-web-guardan-en-" target="_blank">Mozilla Firefox</a></li>
+        <li><a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank">Safari</a></li>
+    </ul>
+
+    <h2>5. Contacto</h2>
+    <p>Si tienes preguntas sobre nuestra pol&iacute;tica de cookies, escr&iacute;benos a <strong>hola@esteticai.com</strong>.</p>
+</div>
+
+<footer class="landing-footer">
+    <p>&copy; Esteticai 2026 &mdash; <a href="/privacidad">Privacidad</a> &middot; <a href="/legal">Aviso legal</a> &middot; <a href="/cookies">Cookies</a></p>
+</footer>
+{% endblock %}
