@@ -3,7 +3,7 @@
 {% block content %}
 <div class="auth-container">
     <div class="auth-card" style="text-align:center;">
-        <div style="font-size:48px; margin-bottom:16px;">{{ icono }}</div>
+        <div style="font-size:48px; margin-bottom:16px;">{{ icono|safe }}</div>
         <h2>{{ titulo }}</h2>
         <p class="auth-desc">{{ mensaje }}</p>
         <div style="margin-top:24px; display:flex; flex-direction:column; gap:10px;">
