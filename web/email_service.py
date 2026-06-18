@@ -19,7 +19,7 @@ logger = logging.getLogger("esteticai.email")
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "Esteticai <hola@esteticai.com>")
-BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
+BASE_URL = os.environ.get("BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "http://localhost:8000"
 
 
 def _enviar_con_resend(to: str, subject: str, html: str) -> bool:
@@ -73,11 +73,11 @@ def _plantilla_base(contenido: str) -> str:
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"></head>
-<body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8f4f5;">
+<body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8faf9;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f4f5; padding:40px 20px;">
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-    <tr><td style="background:linear-gradient(135deg, #e86586, #c7798a); padding:24px 32px; text-align:center;">
+    <tr><td style="background:linear-gradient(135deg, #62C9B8, #4DB8A7); padding:24px 32px; text-align:center;">
         <h1 style="color:#fff; margin:0; font-size:22px; font-weight:700;">Esteticai</h1>
     </td></tr>
     <tr><td style="padding:32px;">
@@ -105,7 +105,7 @@ def enviar_reset_password(to: str, nombre: str, reset_link: str) -> bool:
         </p>
         <div style="text-align:center; margin:28px 0;">
             <a href="{url}"
-               style="display:inline-block; background:#e86586; color:#fff; padding:14px 32px;
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
                       border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
                 Restablecer contrase&ntilde;a
             </a>
@@ -131,7 +131,7 @@ def enviar_verificacion_email(to: str, nombre: str, verify_link: str) -> bool:
         </p>
         <div style="text-align:center; margin:28px 0;">
             <a href="{url}"
-               style="display:inline-block; background:#e86586; color:#fff; padding:14px 32px;
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
                       border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
                 Verificar mi email
             </a>
@@ -166,7 +166,7 @@ def enviar_bienvenida(to: str, nombre: str) -> bool:
         </ul>
         <div style="text-align:center; margin:28px 0;">
             <a href="{BASE_URL}/dashboard"
-               style="display:inline-block; background:#e86586; color:#fff; padding:14px 32px;
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
                       border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
                 Ir al dashboard
             </a>
@@ -185,7 +185,7 @@ def enviar_cuenta_eliminada(to: str, nombre: str) -> bool:
         </p>
         <p style="color:#555; line-height:1.6;">
             Si cambias de idea en el futuro, siempre puedes crear una cuenta nueva
-            en <a href="{BASE_URL}" style="color:#e86586;">esteticai.com</a>.
+            en <a href="{BASE_URL}" style="color:#62C9B8;">esteticai.com</a>.
         </p>
         <p style="color:#999; font-size:13px;">
             Gracias por haber confiado en nosotras. &iexcl;Te deseamos lo mejor!
@@ -208,7 +208,7 @@ def enviar_trial_expirando(to: str, nombre: str, dias_restantes: int) -> bool:
         </p>
         <div style="text-align:center; margin:28px 0;">
             <a href="{BASE_URL}/upgrade"
-               style="display:inline-block; background:#e86586; color:#fff; padding:14px 32px;
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
                       border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
                 Ver planes y precios
             </a>

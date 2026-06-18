@@ -49,9 +49,9 @@ class JsonFormatter(logging.Formatter):
 
 
 # Configurar logging: JSON en producción, texto legible en desarrollo
-_is_railway = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
+_is_production_logs = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER"))
 _handler = logging.StreamHandler()
-if _is_railway:
+if _is_production_logs:
     _handler.setFormatter(JsonFormatter())
 else:
     _handler.setFormatter(logging.Formatter(
@@ -88,8 +88,10 @@ import sqlite3
 # ============================================================
 
 BASE_DIR = Path(__file__).parent
+# Detectar produccion: Railway O Render
+IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER"))
 # En produccion, usar volumen persistente /data para la DB
-if os.environ.get("RAILWAY_ENVIRONMENT"):
+if IS_PRODUCTION:
     DB_PATH = Path("/data/esteticai.db")
 else:
     DB_PATH = BASE_DIR / "esteticai.db"
@@ -100,7 +102,7 @@ app = FastAPI(title="Esteticai", version="1.0")
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("Esteticai starting up (env=%s)", os.environ.get("RAILWAY_ENVIRONMENT", "local"))
+    logger.info("Esteticai starting up (production=%s)", IS_PRODUCTION)
 
 
 @app.on_event("shutdown")
@@ -120,7 +122,6 @@ from starlette.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Seguridad: HTTPS y cookies seguras en producción
-IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
@@ -132,7 +133,7 @@ app.add_middleware(
 # Trusted Host en producción para prevenir host header attacks
 if IS_PRODUCTION:
     from starlette.middleware.trustedhost import TrustedHostMiddleware
-    allowed_hosts = os.environ.get("ALLOWED_HOSTS", "esteticai.com,*.up.railway.app").split(",")
+    allowed_hosts = os.environ.get("ALLOWED_HOSTS", "esteticai.com,*.onrender.com").split(",")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in allowed_hosts])
 
 # Archivos estáticos con cache headers
