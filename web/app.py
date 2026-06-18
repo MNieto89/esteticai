@@ -167,38 +167,15 @@ def generar_csrf_token(request: Request):
     return request.session["csrf_token"]
 
 
-# Rutas de formularios HTML que requieren validación CSRF
-CSRF_FORM_ROUTES = {"/login", "/registro", "/perfil/crear", "/perfil/editar", "/recuperar", "/cuenta/eliminar", "/cuenta/cambiar-password"}
-# Rutas con prefijo (para /reset/{token})
-CSRF_PREFIX_ROUTES = ["/reset/"]
-
-
-@app.middleware("http")
-async def csrf_middleware(request: Request, call_next):
-    """Middleware CSRF: valida token en POSTs de formularios HTML."""
-    if request.method == "POST":
-        content_type = request.headers.get("content-type", "")
-        # Solo validar formularios HTML (no API JSON)
-        es_form = "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type
-        ruta = request.url.path
-        es_ruta_csrf = ruta in CSRF_FORM_ROUTES or any(ruta.startswith(p) for p in CSRF_PREFIX_ROUTES)
-
-        if es_form and es_ruta_csrf:
-            # Leer form sin consumir el body (necesario para que el handler lo lea después)
-            form = await request.form()
-            token_form = form.get("csrf_token", "")
-            token_sesion = request.session.get("csrf_token", "")
-            if not token_sesion or not token_form or token_sesion != token_form:
-                logger.warning("CSRF validation failed for %s from %s",
-                               ruta, request.client.host if request.client else "unknown")
-                return templates.TemplateResponse(request, "error.html", context={
-                    "titulo": "Error de seguridad",
-                    "mensaje": "Token de seguridad inv\u00e1lido. Recarga la p\u00e1gina e int\u00e9ntalo de nuevo.",
-                    "icono": "&#128274;",
-                }, status_code=403)
-
-    response = await call_next(request)
-    return response
+# CSRF como dependencia FastAPI (evita bug de Starlette donde el
+# middleware HTTP consume el body y el handler no puede leerlo)
+async def validar_csrf(request: Request, csrf_token: str = Form("")):
+    """Dependencia FastAPI: valida CSRF token en formularios."""
+    token_sesion = request.session.get("csrf_token", "")
+    if not token_sesion or not csrf_token or token_sesion != csrf_token:
+        logger.warning("CSRF validation failed for %s from %s",
+                       request.url.path, request.client.host if request.client else "unknown")
+        raise HTTPException(status_code=403, detail="Token de seguridad invalido. Recarga la pagina.")
 
 
 # Inyectar csrf_token en todos los contextos de Jinja2
@@ -1029,7 +1006,7 @@ async def login_page(request: Request):
 
 
 @app.post("/login")
-async def login_submit(request: Request, email: str = Form(...), password: str = Form(...)):
+async def login_submit(request: Request, email: str = Form(...), password: str = Form(...), _csrf=Depends(validar_csrf)):
     # Rate limiting por IP
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/login"):
@@ -1074,7 +1051,7 @@ async def registro_page(request: Request):
 
 @app.post("/registro")
 async def registro_submit(request: Request, nombre: str = Form(...),
-                           email: str = Form(...), password: str = Form(...)):
+                           email: str = Form(...), password: str = Form(...), _csrf=Depends(validar_csrf)):
     # Rate limiting por IP
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/registro"):
@@ -1238,7 +1215,7 @@ async def recuperar_page(request: Request):
 
 
 @app.post("/recuperar")
-async def recuperar_submit(request: Request, email: str = Form(...)):
+async def recuperar_submit(request: Request, email: str = Form(...), _csrf=Depends(validar_csrf)):
     # Rate limiting por IP
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/recuperar"):
@@ -1305,7 +1282,7 @@ async def reset_page(request: Request, token: str):
 
 
 @app.post("/reset/{token}")
-async def reset_submit(request: Request, token: str, password: str = Form(...)):
+async def reset_submit(request: Request, token: str, password: str = Form(...), _csrf=Depends(validar_csrf)):
     if len(password) < 6:
         return templates.TemplateResponse(request, "reset_password.html", context={
             "token": token,
@@ -1463,7 +1440,7 @@ async def perfil_crear_page(request: Request):
 
 
 @app.post("/perfil/crear")
-async def perfil_crear_submit(request: Request):
+async def perfil_crear_submit(request: Request, _csrf=Depends(validar_csrf)):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -1513,7 +1490,7 @@ async def perfil_editar_page(request: Request):
 
 
 @app.post("/perfil/editar")
-async def perfil_editar_submit(request: Request):
+async def perfil_editar_submit(request: Request, _csrf=Depends(validar_csrf)):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -1643,7 +1620,7 @@ async def eliminar_cuenta_page(request: Request):
 
 
 @app.post("/cuenta/eliminar")
-async def eliminar_cuenta_submit(request: Request, password: str = Form(...)):
+async def eliminar_cuenta_submit(request: Request, password: str = Form(...), _csrf=Depends(validar_csrf)):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -1775,7 +1752,8 @@ async def exportar_historial_csv(request: Request):
 async def cambiar_password(request: Request,
                             password_actual: str = Form(...),
                             password_nueva: str = Form(...),
-                            password_confirmar: str = Form(...)):
+                            password_confirmar: str = Form(...),
+                            _csrf=Depends(validar_csrf)):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
