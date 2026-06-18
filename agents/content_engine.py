@@ -344,7 +344,7 @@ def generar_contenido_semanal(perfil, api_key=None, contenido_extra=None):
     print(f"[Esteticai] Conectando con Claude... (10-20 segundos)")
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5-20241022",
         max_tokens=4000,
         temperature=0.8,
         system=SYSTEM_PROMPT,
@@ -432,7 +432,7 @@ Responde SOLO con JSON valido (sin markdown, sin ```):
 }"""
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=2000, temperature=0.8,
+        model="claude-sonnet-4-5-20241022", max_tokens=2000, temperature=0.8,
         system=SYSTEM_PROMPT, messages=[{"role": "user", "content": prompt}],
     )
     texto = response.content[0].text.strip()

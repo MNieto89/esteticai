@@ -102,7 +102,7 @@ INSTAGRAM: {perfil.get('instagram_handle', '')}
 
     print(f"[Esteticai] Generando promo: {tipo_promo}...")
     response = client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=2000,
+        model="claude-sonnet-4-5-20241022", max_tokens=2000,
         system=SYSTEM_PROMPT, messages=[{"role": "user", "content": prompt}],
     )
     texto = response.content[0].text.strip()
@@ -141,7 +141,7 @@ FECHAS CLAVE: {', '.join(fechas) if fechas else 'Ninguna especial'}
 
     print(f"[Esteticai] Generando estrategia de {mes}...")
     response = client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=4000,
+        model="claude-sonnet-4-5-20241022", max_tokens=4000,
         system=SYSTEM_PROMPT, messages=[{"role": "user", "content": prompt}],
     )
     texto = response.content[0].text.strip()
