@@ -90,8 +90,8 @@ import sqlite3
 BASE_DIR = Path(__file__).parent
 # Detectar produccion: Railway O Render
 IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER"))
-# En produccion, usar volumen persistente /data para la DB
-if IS_PRODUCTION:
+# En produccion, usar volumen persistente /data para la DB (solo si existe)
+if IS_PRODUCTION and Path("/data").exists():
     DB_PATH = Path("/data/esteticai.db")
 else:
     DB_PATH = BASE_DIR / "esteticai.db"
@@ -130,11 +130,13 @@ app.add_middleware(
     max_age=86400 * 7,  # 7 días
 )
 
-# Trusted Host en producción para prevenir host header attacks
-if IS_PRODUCTION:
-    from starlette.middleware.trustedhost import TrustedHostMiddleware
-    allowed_hosts = os.environ.get("ALLOWED_HOSTS", "esteticai.com,*.onrender.com").split(",")
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in allowed_hosts])
+# TrustedHostMiddleware desactivado temporalmente: bloquea los health checks
+# internos de Render (usan host headers internos, no el dominio publico).
+# TODO: reactivar cuando se configure un dominio propio.
+# if IS_PRODUCTION:
+#     from starlette.middleware.trustedhost import TrustedHostMiddleware
+#     allowed_hosts = os.environ.get("ALLOWED_HOSTS", "esteticai.com,*.onrender.com").split(",")
+#     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in allowed_hosts])
 
 # Archivos estáticos con cache headers
 from starlette.staticfiles import StaticFiles as _StaticFiles
@@ -200,7 +202,12 @@ async def request_id_middleware(request: Request, call_next):
     start = _time.monotonic()
     _cleanup_rate_limits()  # Limpieza periódica (no-op si no ha pasado el intervalo)
     logger.info("%s %s", request.method, request.url.path)
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        import traceback
+        logger.error("UNHANDLED ERROR on %s %s: %s\n%s", request.method, request.url.path, e, traceback.format_exc())
+        return JSONResponse({"error": str(e), "type": type(e).__name__, "path": str(request.url.path)}, status_code=500)
     elapsed_ms = round((_time.monotonic() - start) * 1000, 1)
     response.headers["X-Request-ID"] = req_id
     response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
@@ -476,38 +483,6 @@ async def health():
         "is_production": IS_PRODUCTION,
         "db_path": str(DB_PATH),
     }
-
-
-@app.post("/debug-registro")
-async def debug_registro(request: Request):
-    """Endpoint temporal para diagnosticar el error 500 en registro."""
-    import traceback
-    try:
-        form = await request.form()
-        form_keys = list(form.keys())
-
-        # Simulate what registro does
-        nombre = form.get("nombre", "TestDebug")
-        email = form.get("email", f"debug_{secrets.token_hex(4)}@test.com")
-        password = form.get("password", "test123456")
-
-        # Test hash
-        pw_hash = hash_password(password)
-
-        # Test DB write
-        db = get_db()
-        trial_ends = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
-        db.execute(
-            "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at, email_verificado) VALUES (?, ?, ?, 'trial', ?, 0)",
-            (email, pw_hash, nombre, trial_ends)
-        )
-        db.commit()
-        user = db.execute("SELECT id, email FROM usuarios WHERE email = ?", (email,)).fetchone()
-        db.close()
-
-        return {"ok": True, "user_id": user["id"], "email": user["email"], "form_keys": form_keys}
-    except Exception as e:
-        return {"ok": False, "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()}
 
 
 # ============================================================
