@@ -483,20 +483,31 @@ async def health():
     if fal_key:
         fal_status = f"SET ({len(fal_key)} chars)"
 
-    # Test rapido de Anthropic API
-    anthropic_test = "not tested"
+    # Test rapido con httpx directo (sin SDK)
+    import anthropic as anthropic_pkg
+    sdk_version = getattr(anthropic_pkg, '__version__', 'unknown')
+
+    raw_api_test = "not tested"
     if anthropic_key:
         try:
-            from anthropic import Anthropic
-            test_client = Anthropic(api_key=anthropic_key)
-            test_response = test_client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Di hola"}],
+            import httpx
+            resp = httpx.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": anthropic_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-3-haiku-20240307",
+                    "max_tokens": 10,
+                    "messages": [{"role": "user", "content": "Hi"}],
+                },
+                timeout=15,
             )
-            anthropic_test = f"OK - model responded: {test_response.content[0].text[:20]}"
+            raw_api_test = f"HTTP {resp.status_code} - {resp.text[:200]}"
         except Exception as e:
-            anthropic_test = f"FAIL - {type(e).__name__}: {e}"
+            raw_api_test = f"FAIL - {type(e).__name__}: {e}"
 
     return {
         "status": "ok" if db_ok else "degraded",
@@ -510,7 +521,8 @@ async def health():
         "db_path": str(DB_PATH),
         "anthropic_key": anthropic_status,
         "fal_key": fal_status,
-        "anthropic_api_test": anthropic_test,
+        "anthropic_sdk_version": sdk_version,
+        "raw_api_test": raw_api_test,
     }
 
 
