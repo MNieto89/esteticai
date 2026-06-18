@@ -44,14 +44,14 @@ CONOCIMIENTO_SERVICIOS = {
         "elementos_visuales": "vitamin C serum, brightening cream, IPL device, derma pen",
         "ambiente": "modern treatment room, soft warm lighting",
         "productos_tipicos": "vitamin C serum, niacinamide, kojic acid cream, SPF",
-        "colores": "golden, amber, warm white",
+        "colores": "white, soft mint, warm neutral",
         "resultado": "even skin tone, bright complexion, faded dark spots",
     },
     "radiofrecuencia": {
         "elementos_visuales": "radiofrequency handpiece, conductive gel, modern RF device with LED screen",
         "ambiente": "high-tech aesthetic clinic, sleek modern equipment",
         "productos_tipicos": "conductive gel, firming cream, collagen booster serum",
-        "colores": "gold, white, rose gold",
+        "colores": "white, mint, silver",
         "resultado": "firm lifted skin, defined jawline, reduced wrinkles",
     },
     "mesoterapia": {
@@ -72,14 +72,14 @@ CONOCIMIENTO_SERVICIOS = {
         "elementos_visuales": "microblading pen, pigment cups, eyebrow mapping tools, fine blade",
         "ambiente": "intimate well-lit workspace, precision tools laid out",
         "productos_tipicos": "numbing cream, pigment palette, aftercare balm",
-        "colores": "warm brown, nude, rose",
+        "colores": "warm brown, nude, soft neutral",
         "resultado": "perfectly shaped natural-looking eyebrows, hair-stroke detail",
     },
     "acido hialuronico": {
         "elementos_visuales": "hyaluronic acid syringe, filler vials, cannula, sterile tray",
         "ambiente": "luxury medical aesthetic clinic, professional and elegant",
         "productos_tipicos": "HA filler syringes, numbing cream, aftercare products",
-        "colores": "white, gold, crystal clear",
+        "colores": "white, silver, crystal clear",
         "resultado": "plump hydrated skin, restored volume, smooth fine lines",
     },
     "masaje drenante": {
@@ -93,7 +93,7 @@ CONOCIMIENTO_SERVICIOS = {
         "elementos_visuales": "facial mask, serum dropper, jade roller, treatment bed",
         "ambiente": "spa-like room, soft lighting, calming atmosphere",
         "productos_tipicos": "sheet mask, serum, moisturizer, eye cream",
-        "colores": "soft pink, white, lavender",
+        "colores": "soft mint, white, cool grey",
         "resultado": "glowing hydrated skin, relaxed expression, youthful appearance",
     },
     "corporal": {
@@ -142,19 +142,19 @@ ESTILOS_PUBLICACION = {
 # Paletas de color segun tono de marca
 PALETAS_TONO = {
     "cercano": {
-        "principal": "warm pink and peach",
-        "secundario": "soft gold accents",
-        "ambiente": "warm, inviting, friendly",
+        "principal": "soft mint green and seafoam",
+        "secundario": "clean white and light grey accents",
+        "ambiente": "fresh, elegant, approachable",
     },
     "profesional": {
-        "principal": "clean white and navy blue",
-        "secundario": "silver and grey accents",
+        "principal": "deep black and mint green",
+        "secundario": "silver and cool grey accents",
         "ambiente": "clinical, trustworthy, premium",
     },
     "divertido": {
-        "principal": "bright coral and lavender",
-        "secundario": "playful mint green accents",
-        "ambiente": "energetic, youthful, fresh",
+        "principal": "bright teal and mint",
+        "secundario": "crisp white and charcoal accents",
+        "ambiente": "energetic, fresh, modern",
     },
 }
 
@@ -505,15 +505,15 @@ def _generar_placeholder(servicio="Tratamiento", tipo_pub="post_feed"):
         }
         ancho, alto = tamanos.get(tipo_pub, (1080, 1080))
 
-        # Crear imagen con gradiente rosa suave
-        img = Image.new("RGB", (ancho, alto), (253, 241, 243))
+        # Crear imagen con gradiente mint suave
+        img = Image.new("RGB", (ancho, alto), (235, 248, 245))
         draw = ImageDraw.Draw(img)
 
         # Gradiente diagonal
         for y in range(alto):
-            r = int(253 - (y / alto) * 30)
-            g = int(241 - (y / alto) * 40)
-            b = int(243 - (y / alto) * 20)
+            r = int(235 - (y / alto) * 30)
+            g = int(248 - (y / alto) * 20)
+            b = int(245 - (y / alto) * 25)
             draw.line([(0, y), (ancho, y)], fill=(r, g, b))
 
         # Icono central
@@ -530,7 +530,7 @@ def _generar_placeholder(servicio="Tratamiento", tipo_pub="post_feed"):
         cx, cy = ancho // 2, alto // 2 - 40
         radio = 80
         draw.ellipse([(cx - radio, cy - radio), (cx + radio, cy + radio)],
-                     fill=(199, 121, 135), outline=(180, 100, 120), width=3)
+                     fill=(98, 201, 184), outline=(77, 184, 167), width=3)
 
         # Icono de camara
         icon_text = "AI"
@@ -543,7 +543,7 @@ def _generar_placeholder(servicio="Tratamiento", tipo_pub="post_feed"):
         texto = servicio[:40] if len(servicio) > 40 else servicio
         bbox = draw.textbbox((0, 0), texto, font=fuente_med)
         tw = bbox[2] - bbox[0]
-        draw.text((cx - tw // 2, cy + radio + 30), texto, font=fuente_med, fill=(199, 121, 135))
+        draw.text((cx - tw // 2, cy + radio + 30), texto, font=fuente_med, fill=(56, 158, 142))
 
         # Texto demo
         demo_text = "Vista previa - Imagen generada con IA"

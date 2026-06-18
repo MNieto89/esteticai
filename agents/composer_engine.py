@@ -58,13 +58,13 @@ PLANTILLA_INFO = {
 
 # Colores base (se sobreescriben con colores de marca si existen)
 COLORES = {
-    "rosa": (199, 121, 135),
-    "rosa_claro": (253, 241, 243),
+    "rosa": (98, 201, 184),
+    "rosa_claro": (235, 248, 245),
     "blanco": (255, 255, 255),
-    "negro": (30, 30, 30),
-    "gris": (120, 120, 120),
-    "gris_claro": (245, 245, 245),
-    "dorado": (191, 155, 103),
+    "negro": (26, 26, 26),
+    "gris": (110, 124, 117),
+    "gris_claro": (243, 245, 244),
+    "dorado": (56, 158, 142),
 }
 
 

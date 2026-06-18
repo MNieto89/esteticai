@@ -13,16 +13,68 @@
 {% block content %}
 
 <!-- HERO -->
-<div class="hero">
-    <div class="hero-content">
-        <span class="hero-badge">IA dise&ntilde;ada para profesionales de la belleza</span>
-        <h1>Contenido profesional para redes sociales <em>en segundos</em></h1>
-        <p class="hero-sub">Copys, im&aacute;genes, videos y calendarios adaptados a tu negocio. Sin community manager. Sin perder horas. Todo desde tu navegador o tu m&oacute;vil.</p>
-        <div class="hero-buttons">
-            <a href="/registro" class="btn btn-primary btn-lg">Probar 7 d&iacute;as gratis</a>
-            <a href="/precios" class="btn btn-secondary btn-lg">Ver precios</a>
+<div class="hero-animated">
+    <div class="hero-blob hero-blob-1"></div>
+    <div class="hero-blob hero-blob-2"></div>
+    <div class="hero-blob hero-blob-3"></div>
+
+    <div class="hero-split">
+        <div class="hero-content">
+            <span class="hero-badge">IA dise&ntilde;ada para belleza</span>
+            <h1>Crea contenido profesional para redes <em>en segundos</em></h1>
+            <p class="hero-sub">6 herramientas de inteligencia artificial que entienden tu negocio. Copys, im&aacute;genes, v&iacute;deos y calendario semanal. Todo desde tu navegador.</p>
+            <div class="hero-buttons">
+                <a href="/registro" class="btn btn-primary btn-lg">Probar 7 d&iacute;as gratis</a>
+                <a href="#demo" class="btn btn-secondary btn-lg">Ver demo</a>
+            </div>
+            <p class="hero-trust">Sin tarjeta &middot; Desde 59&euro;/mes &middot; Cancela cuando quieras</p>
         </div>
-        <p class="hero-trust">Desde 59&euro;/mes &middot; Sin permanencia &middot; Funciona en web y m&oacute;vil</p>
+
+        <div class="hero-mockup">
+            <div class="hero-mockup-window">
+                <div class="hero-mockup-bar">
+                    <div class="hero-mockup-dot"></div>
+                    <div class="hero-mockup-dot"></div>
+                    <div class="hero-mockup-dot"></div>
+                    <div class="hero-mockup-url">esteticai.com/dashboard</div>
+                </div>
+                <div class="hero-mockup-body">
+                    <div style="margin-bottom:14px;">
+                        <div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:700; color:var(--texto);">Hola, Mar&iacute;a</div>
+                        <div style="font-size:11px; color:var(--gris-400); margin-top:2px;">&iquest;Qu&eacute; quieres crear hoy para <strong>Cl&iacute;nica Bella Piel</strong>?</div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div style="background:var(--rosa-claro); border-radius:10px; padding:12px; border:1px solid var(--rosa-suave);">
+                            <div style="font-size:11px; font-weight:700; color:var(--rosa-oscuro); letter-spacing:0.5px; margin-bottom:4px;">COPY</div>
+                            <div style="font-size:11px; font-weight:700; color:var(--texto);">Generar Copy</div>
+                            <div style="font-size:9px; color:var(--gris-500); margin-top:2px;">Texto + hashtags + CTA</div>
+                        </div>
+                        <div style="background:var(--gris-100); border-radius:10px; padding:12px; border:1px solid var(--gris-200);">
+                            <div style="font-size:11px; font-weight:700; color:var(--gris-500); letter-spacing:0.5px; margin-bottom:4px;">IMG</div>
+                            <div style="font-size:11px; font-weight:700; color:var(--texto);">Crear Imagen</div>
+                            <div style="font-size:9px; color:var(--gris-500); margin-top:2px;">IA genera tu visual</div>
+                        </div>
+                        <div style="background:var(--gris-100); border-radius:10px; padding:12px; border:1px solid var(--gris-200);">
+                            <div style="font-size:11px; font-weight:700; color:var(--gris-500); letter-spacing:0.5px; margin-bottom:4px;">VIDEO</div>
+                            <div style="font-size:11px; font-weight:700; color:var(--texto);">V&iacute;deo Reel</div>
+                            <div style="font-size:9px; color:var(--gris-500); margin-top:2px;">Anima tu imagen</div>
+                        </div>
+                        <div style="background:var(--gris-100); border-radius:10px; padding:12px; border:1px solid var(--gris-200);">
+                            <div style="font-size:11px; font-weight:700; color:var(--gris-500); letter-spacing:0.5px; margin-bottom:4px;">CAL</div>
+                            <div style="font-size:11px; font-weight:700; color:var(--texto);">Calendario</div>
+                            <div style="font-size:9px; color:var(--gris-500); margin-top:2px;">Plan semanal completo</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; background:var(--dorado-claro); border-radius:8px; padding:8px 12px; display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:10px; font-weight:700; color:var(--dorado-oscuro); background:white; padding:2px 8px; border-radius:100px;">PRO</span>
+                        <div style="flex:1; height:4px; background:rgba(255,255,255,0.5); border-radius:100px; overflow:hidden;">
+                            <div style="width:35%; height:100%; background:var(--dorado); border-radius:100px;"></div>
+                        </div>
+                        <span style="font-size:9px; color:var(--dorado-oscuro); font-weight:600;">7/20 copys</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -31,65 +83,133 @@
     <div class="landing-content">
         <div style="text-align:center;">
             <span class="section-label">El problema</span>
-            <h2>&iquest;Te suena esto?</h2>
-            <p class="section-subtitle">Crear contenido para redes sociales es una carga que no deber&iacute;a alejarte de lo que mejor haces: cuidar a tus clientas.</p>
+            <h2>&iquest;Reconoces esto?</h2>
         </div>
         <div class="problem-grid">
             <div class="problem-card">
-                <span class="problem-icon">&#9200;</span>
-                <p>Pasas horas pensando qu&eacute; publicar y al final no publicas nada</p>
+                <span class="problem-icon" style="font-family:'Playfair Display',serif; font-size:28px; color:var(--rosa);">2h</span>
+                <p><strong>2 horas</strong> pensando qu&eacute; publicar. Al final no publicas nada.</p>
             </div>
             <div class="problem-card">
-                <span class="problem-icon">&#128176;</span>
-                <p>Un community manager cuesta 300-800&euro;/mes y no entiende tu sector</p>
+                <span class="problem-icon" style="font-family:'Playfair Display',serif; font-size:22px; color:var(--rosa);">800&euro;</span>
+                <p><strong>300-800&euro;/mes</strong> por un community manager que no entiende de est&eacute;tica.</p>
             </div>
             <div class="problem-card">
-                <span class="problem-icon">&#128148;</span>
-                <p>Tus redes est&aacute;n abandonadas y no atraen nuevas clientas</p>
+                <span class="problem-icon" style="font-family:'Playfair Display',serif; font-size:22px; color:var(--rosa);">0 posts</span>
+                <p><strong>Redes abandonadas</strong> y cada d&iacute;a pierdes clientas potenciales.</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- HERRAMIENTAS -->
-<div class="landing-section landing-dark">
+<!-- HERRAMIENTAS — BENTO GRID -->
+<div class="landing-section" style="background:var(--rosa-claro);">
     <div class="landing-content">
         <div style="text-align:center;">
             <span class="section-label">Tus herramientas</span>
             <h2>6 motores de IA a tu servicio</h2>
-            <p class="section-subtitle">Cada herramienta est&aacute; dise&ntilde;ada espec&iacute;ficamente para negocios de est&eacute;tica y belleza. Resultados profesionales, cero conocimientos t&eacute;cnicos.</p>
+            <p class="section-subtitle">Cada uno dise&ntilde;ado espec&iacute;ficamente para negocios de est&eacute;tica. Resultados profesionales, cero conocimientos t&eacute;cnicos.</p>
         </div>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-card-icon">&#9997;&#65039;</div>
-                <h3>Copys profesionales</h3>
-                <p>Textos con hashtags, CTAs y estrategia para 8 tipos de post: educativos, testimonios, promociones, producto y m&aacute;s.</p>
+        <div class="bento-grid">
+            <div class="bento-card bento-featured">
+                <div>
+                    <div class="bento-card-icon" style="font-family:'Playfair Display',serif; font-style:italic;">Cp</div>
+                    <h3>Copys profesionales</h3>
+                    <p>8 tipos de post: educativo, testimonio, promoci&oacute;n, producto, personal... La IA escribe con tu tono de voz, a&ntilde;ade hashtags estrat&eacute;gicos y un CTA que convierte.</p>
+                </div>
+                <div class="bento-featured-preview">
+                    <strong>Resultados que hablan solos</strong><br><br>
+                    Despu&eacute;s de 6 sesiones de radiofrecuencia facial, la piel de Laura recuper&oacute; firmeza y luminosidad. Esa sensaci&oacute;n de mirarte al espejo y sonre&iacute;r...<br><br>
+                    <span style="color:var(--rosa);">#EsteticaFacial #ResultadosReales #Radiofrecuencia #CuidaTuPiel</span><br>
+                    <span style="font-weight:700; color:var(--texto);">Reserva tu valoraci&oacute;n gratuita &rarr;</span>
+                </div>
             </div>
-            <div class="feature-card">
-                <div class="feature-card-icon">&#128247;</div>
+
+            <div class="bento-card">
+                <div class="bento-card-icon" style="font-family:'Playfair Display',serif; font-style:italic;">Im</div>
                 <h3>Im&aacute;genes con IA</h3>
-                <p>Fotos profesionales generadas con Flux para tus servicios. 6 formatos: feed, stories, portadas de Reels, carruseles.</p>
+                <p>Fotos profesionales generadas con Flux. 6 formatos: feed, stories, portadas de Reels, carruseles y producto.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-card-icon">&#127910;</div>
-                <h3>Videos para Reels</h3>
-                <p>Convierte im&aacute;genes en videos animados con Kling 3.0. Zoom, panor&aacute;mica, &oacute;rbita y revelaci&oacute;n dram&aacute;tica.</p>
+
+            <div class="bento-card">
+                <div class="bento-card-icon" style="font-family:'Playfair Display',serif; font-style:italic;">Vd</div>
+                <h3>V&iacute;deos para Reels</h3>
+                <p>Convierte im&aacute;genes en v&iacute;deos animados con Kling 3.0. Zoom, panor&aacute;mica, &oacute;rbita y revelaci&oacute;n dram&aacute;tica.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-card-icon">&#128260;</div>
+
+            <div class="bento-card">
+                <div class="bento-card-icon" style="font-family:'Playfair Display',serif; font-style:italic;">A/D</div>
                 <h3>Antes y Despu&eacute;s</h3>
-                <p>Sube dos fotos y genera composiciones profesionales con 4 plantillas: lado a lado, premium, diagonal y story.</p>
+                <p>Sube dos fotos y genera composiciones con 4 plantillas profesionales listas para publicar.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-card-icon">&#10024;</div>
+
+            <div class="bento-card bento-featured">
+                <div>
+                    <div class="bento-card-icon" style="font-family:'Playfair Display',serif; font-style:italic;">Cal</div>
+                    <h3>Calendario semanal</h3>
+                    <p>Plan completo de 7 d&iacute;as con estrategia, copys listos, horarios y formatos recomendados para cada red social. Exportable y listo para seguir.</p>
+                </div>
+                <div class="bento-featured-preview" style="font-size:12px;">
+                    <strong>Lunes</strong> &#8212; Educativo: &ldquo;3 errores al limpiar tu piel&rdquo;<br>
+                    <strong>Martes</strong> &#8212; Testimonio: caso real radiofrecuencia<br>
+                    <strong>Mi&eacute;rcoles</strong> &#8212; Reel: antes/despu&eacute;s peeling<br>
+                    <strong>Jueves</strong> &#8212; Producto: serum vitamina C<br>
+                    <strong>Viernes</strong> &#8212; Behind scenes: tu d&iacute;a a d&iacute;a<br>
+                    <strong>S&aacute;bado</strong> &#8212; Promo: descuento fin de semana<br>
+                    <strong>Domingo</strong> &#8212; Personal: tu motivaci&oacute;n
+                </div>
+            </div>
+
+            <div class="bento-card">
+                <div class="bento-card-icon" style="font-family:'Playfair Display',serif; font-style:italic;">HD</div>
                 <h3>Mejora de fotos</h3>
-                <p>Sube una foto real y la IA le cambia el fondo, mejora la calidad y le da aspecto de estudio profesional.</p>
+                <p>Sube tu foto real y la IA le cambia el fondo, mejora la calidad y le da aspecto de estudio profesional.</p>
             </div>
-            <div class="feature-card">
-                <div class="feature-card-icon">&#128197;</div>
-                <h3>Calendario semanal</h3>
-                <p>Plan de 7 d&iacute;as con estrategia, copys, horarios y formatos recomendados. Exportable y listo para seguir.</p>
+        </div>
+    </div>
+</div>
+
+<!-- DEMO INTERACTIVA -->
+<div class="demo-section" id="demo">
+    <div class="demo-content">
+        <div style="text-align:center;">
+            <span class="section-label">Ve&ntilde;lo en acci&oacute;n</span>
+            <h2>As&iacute; funciona Esteticai</h2>
+            <p class="demo-subtitle">Elige un tipo de contenido y mira c&oacute;mo la IA genera el resultado en tiempo real.</p>
+        </div>
+        <div class="demo-window">
+            <div class="demo-steps">
+                <button class="demo-step-btn active" onclick="showDemo('copy', this)">Copy educativo</button>
+                <button class="demo-step-btn" onclick="showDemo('promo', this)">Promoci&oacute;n</button>
+                <button class="demo-step-btn" onclick="showDemo('calendario', this)">Calendario</button>
             </div>
+            <div class="demo-output">
+                <div class="demo-typing" id="demo-output">
+                    <span id="demo-text"></span><span class="typed-cursor"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CONTADORES ANIMADOS -->
+<div class="counter-section">
+    <div class="counter-grid">
+        <div class="counter-item">
+            <div class="counter-num" data-target="6">0</div>
+            <div class="counter-label">Herramientas de IA especializadas</div>
+        </div>
+        <div class="counter-item">
+            <div class="counter-num" data-target="8">0</div>
+            <div class="counter-label">Tipos de copy profesional</div>
+        </div>
+        <div class="counter-item">
+            <div class="counter-num" data-target="30" data-prefix="<">0</div>
+            <div class="counter-label">Segundos de generaci&oacute;n</div>
+        </div>
+        <div class="counter-item">
+            <div class="counter-num" data-target="24" data-suffix="/7">0</div>
+            <div class="counter-label">Disponible siempre</div>
         </div>
     </div>
 </div>
@@ -98,57 +218,129 @@
 <div class="landing-section">
     <div class="landing-content">
         <div style="text-align:center;">
-            <span class="section-label">As&iacute; de f&aacute;cil</span>
+            <span class="section-label">3 pasos</span>
             <h2>De 0 a publicar en 2 minutos</h2>
-            <p class="section-subtitle">Sin conocimientos t&eacute;cnicos. Sin descargas. Todo desde tu navegador.</p>
         </div>
         <div class="steps">
             <div class="step">
                 <div class="step-num">1</div>
-                <h3>Configura tu negocio</h3>
-                <p>Tus servicios, tu tono de voz, tus redes. La IA aprende todo sobre tu marca para crear contenido a medida.</p>
+                <h3>Configura tu marca</h3>
+                <p>Servicios, productos, tono de voz, redes sociales. La IA aprende todo sobre tu negocio.</p>
             </div>
             <div class="step">
                 <div class="step-num">2</div>
                 <h3>Elige y genera</h3>
-                <p>Selecciona qu&eacute; necesitas &mdash; un copy, una imagen, un v&iacute;deo &mdash; y pulsa generar. Listo en segundos.</p>
+                <p>Selecciona qu&eacute; necesitas y pulsa un bot&oacute;n. La IA crea contenido profesional en segundos.</p>
             </div>
             <div class="step">
                 <div class="step-num">3</div>
                 <h3>Descarga y publica</h3>
-                <p>Copia el texto, descarga la imagen y publica directamente en tus redes. Contenido profesional sin esfuerzo.</p>
+                <p>Copia, descarga y publica en tus redes. Sin complicaciones.</p>
             </div>
         </div>
     </div>
 </div>
 
 <!-- WEB + MOVIL -->
-<div class="landing-section landing-dark">
+<div class="landing-section" style="background:var(--rosa-claro);">
+    <div class="landing-content">
+        <div class="app-section">
+            <div class="app-info">
+                <span class="section-label">Multiplataforma</span>
+                <h3>En tu ordenador y en tu m&oacute;vil</h3>
+                <p>Accede desde cualquier navegador o inst&aacute;lala como app en tu m&oacute;vil con un solo toque. Mismas credenciales, mismas herramientas, en cualquier momento.</p>
+                <ul class="app-features-list">
+                    <li>Acceso completo desde el navegador</li>
+                    <li>Instalable como app nativa en iOS y Android</li>
+                    <li>Funciona sin conexi&oacute;n (modo offline)</li>
+                    <li>Un solo usuario para todos tus dispositivos</li>
+                </ul>
+                <a href="/registro" class="btn btn-primary">Crear cuenta gratis</a>
+            </div>
+            <div class="app-phone">
+                <div class="app-phone-frame">
+                    <div class="app-phone-notch"></div>
+                    <div class="app-phone-screen">
+                        <div class="app-phone-header">
+                            <div class="app-phone-header-title">Esteticai</div>
+                            <div class="app-phone-header-sub">Cl&iacute;nica Bella Piel</div>
+                        </div>
+                        <div class="app-phone-cards">
+                            <div class="app-phone-card">
+                                <span class="app-phone-card-icon" style="font-family:'Playfair Display',serif; font-style:italic; font-size:12px;">Cp</span>
+                                <span class="app-phone-card-text">Generar Copy</span>
+                            </div>
+                            <div class="app-phone-card">
+                                <span class="app-phone-card-icon" style="font-family:'Playfair Display',serif; font-style:italic; font-size:12px;">Im</span>
+                                <span class="app-phone-card-text">Crear Imagen</span>
+                            </div>
+                            <div class="app-phone-card">
+                                <span class="app-phone-card-icon" style="font-family:'Playfair Display',serif; font-style:italic; font-size:12px;">Vd</span>
+                                <span class="app-phone-card-text">V&iacute;deo Reel</span>
+                            </div>
+                            <div class="app-phone-card">
+                                <span class="app-phone-card-icon" style="font-family:'Playfair Display',serif; font-style:italic; font-size:12px;">HD</span>
+                                <span class="app-phone-card-text">Mejorar Foto</span>
+                            </div>
+                            <div class="app-phone-card">
+                                <span class="app-phone-card-icon" style="font-family:'Playfair Display',serif; font-style:italic; font-size:12px;">Cal</span>
+                                <span class="app-phone-card-text">Calendario</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TESTIMONIOS -->
+<div class="landing-section">
     <div class="landing-content">
         <div style="text-align:center;">
-            <span class="section-label">Donde quieras</span>
-            <h2>En tu ordenador y en tu m&oacute;vil</h2>
-            <p class="section-subtitle">Accede desde cualquier navegador. O instala la app en tu m&oacute;vil con un solo toque. Mismas credenciales, mismas herramientas.</p>
+            <span class="section-label">Opiniones</span>
+            <h2>Lo que dicen nuestras clientas</h2>
         </div>
-        <div class="problem-grid">
-            <div class="problem-card">
-                <span class="problem-icon">&#128187;</span>
-                <p><strong>Web completa</strong><br>Accede a todas las herramientas desde tu navegador, sin descargar nada.</p>
+        <div class="testimonials">
+            <div class="testimonial-card">
+                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <p class="testimonial-text">&ldquo;Antes tardaba 2 horas en pensar un post. Ahora en 30 segundos tengo copy, hashtags y CTA. Es como tener una community manager que entiende de est&eacute;tica.&rdquo;</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">LM</div>
+                    <div>
+                        <div class="testimonial-name">Laura Mart&iacute;nez</div>
+                        <div class="testimonial-role">Cl&iacute;nica de est&eacute;tica facial, Madrid</div>
+                    </div>
+                </div>
             </div>
-            <div class="problem-card">
-                <span class="problem-icon">&#128241;</span>
-                <p><strong>App en tu m&oacute;vil</strong><br>Inst&aacute;lala como una app desde el navegador. Funciona offline y se abre instant&aacute;neamente.</p>
+            <div class="testimonial-card">
+                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <p class="testimonial-text">&ldquo;Las im&aacute;genes que genera son espectaculares. Mis clientas me preguntan qu&eacute; fot&oacute;grafo he contratado. Y es la IA.&rdquo;</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">CS</div>
+                    <div>
+                        <div class="testimonial-name">Carmen S&aacute;nchez</div>
+                        <div class="testimonial-role">Centro de belleza, Valencia</div>
+                    </div>
+                </div>
             </div>
-            <div class="problem-card">
-                <span class="problem-icon">&#128274;</span>
-                <p><strong>Un solo usuario</strong><br>Reg&iacute;strate en la web y usa las mismas credenciales en todos tus dispositivos.</p>
+            <div class="testimonial-card">
+                <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <p class="testimonial-text">&ldquo;El calendario semanal me ha cambiado la vida. Ya no improviso, tengo un plan cada semana y mis redes est&aacute;n siempre activas.&rdquo;</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">AR</div>
+                    <div>
+                        <div class="testimonial-name">Ana Rodr&iacute;guez</div>
+                        <div class="testimonial-role">Spa y bienestar, Barcelona</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- PARA QUIEN -->
-<div class="landing-section">
+<div class="landing-section" style="background:var(--rosa-claro);">
     <div class="landing-content">
         <div style="text-align:center;">
             <span class="section-label">Tu sector</span>
@@ -156,40 +348,20 @@
         </div>
         <div class="audience-grid">
             <div class="audience-card">
-                <h3>&#128142; Cl&iacute;nicas</h3>
+                <h3>Cl&iacute;nicas</h3>
                 <p>Facial, corporal, l&aacute;ser, aparatolog&iacute;a. Contenido que transmite profesionalidad y resultados.</p>
             </div>
             <div class="audience-card">
-                <h3>&#128133; Belleza</h3>
-                <p>Peluquer&iacute;as, centros de u&ntilde;as, maquillaje. Posts que atraen clientas y muestran tu talento.</p>
+                <h3>Belleza</h3>
+                <p>Peluquer&iacute;as, u&ntilde;as, maquillaje. Posts que atraen clientas y muestran tu talento.</p>
             </div>
             <div class="audience-card">
-                <h3>&#127807; Spas</h3>
-                <p>Masajes, tratamientos corporales, relax. Im&aacute;genes y textos que transmiten calma y lujo.</p>
+                <h3>Spas</h3>
+                <p>Masajes, tratamientos corporales. Im&aacute;genes y textos que transmiten calma y lujo.</p>
             </div>
             <div class="audience-card">
-                <h3>&#128188; Distribuidoras</h3>
-                <p>Contenido personalizado con los productos de tu marca. Ideal para partners y representantes.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- DATOS -->
-<div class="landing-section landing-dark">
-    <div class="landing-content">
-        <div class="social-proof">
-            <div class="proof-stat">
-                <span class="proof-num">6</span>
-                <span class="proof-label">Herramientas de IA especializadas</span>
-            </div>
-            <div class="proof-stat">
-                <span class="proof-num">&lt;30s</span>
-                <span class="proof-label">Tiempo medio de generaci&oacute;n</span>
-            </div>
-            <div class="proof-stat">
-                <span class="proof-num">24/7</span>
-                <span class="proof-label">Disponible cuando t&uacute; quieras</span>
+                <h3>Distribuidoras</h3>
+                <p>Contenido personalizado con los productos de tu marca. Ideal para partners.</p>
             </div>
         </div>
     </div>
@@ -199,7 +371,7 @@
 <div class="landing-section landing-rosa">
     <div class="landing-content landing-cta">
         <h2>Tu contenido profesional empieza hoy</h2>
-        <p>7 d&iacute;as de prueba gratuita. Sin tarjeta de cr&eacute;dito. Sin permanencia.</p>
+        <p>7 d&iacute;as de prueba gratuita. Sin tarjeta. Sin permanencia.</p>
         <a href="/registro" class="btn btn-primary btn-lg">Crear cuenta gratis</a>
         <p class="cta-small"><a href="/precios">Ver planes y precios &rarr;</a></p>
     </div>
@@ -224,4 +396,78 @@
     </div>
 </footer>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+const demoTexts = {
+    copy: `3 errores que cometes al limpiar tu piel (y no lo sabes)\n\nError 1: Usar agua caliente. Abre los poros pero irrita la piel sensible. Mejor tibia.\n\nError 2: Frotar con toalla. La piel del rostro es delicada. Mejor dar toquecitos.\n\nError 3: Saltarte el tónico. Es el paso que prepara tu piel para absorber el serum.\n\n¿Quieres una limpieza facial profesional? Reserva tu cita.\n\n#CuidadoDeLaPiel #EsteticaFacial #TipsDePiel #LimpiezaFacial #BellezaNatural`,
+    promo: `PROMO FLASH — Solo esta semana\n\n2x1 en tratamientos de radiofrecuencia facial.\n\nTú vienes con una amiga, las dos salís con la piel más firme y luminosa.\n\nVálido hasta el domingo\nClínica Bella Piel, Madrid\nReserva: 91 XXX XX XX\n\n#PromoEstetica #Radiofrecuencia #2x1 #BellezaMadrid #TratamientoFacial`,
+    calendario: `PLAN SEMANAL — Clínica Bella Piel\n\nLunes: Educativo — "3 errores al limpiar tu piel"\nMartes: Testimonio — Caso real radiofrecuencia\nMiércoles: Reel — Antes/después peeling\nJueves: Producto — Serum vitamina C\nViernes: Behind scenes — Tu día a día\nSábado: Promo — Descuento fin de semana\nDomingo: Personal — Tu motivación\n\nEstrategia: Alternar valor + emoción + venta`
+};
+
+let typingTimeout = null;
+
+function showDemo(type, btnEl) {
+    document.querySelectorAll('.demo-step-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    if (typingTimeout) clearTimeout(typingTimeout);
+    const textEl = document.getElementById('demo-text');
+    textEl.textContent = '';
+
+    const text = demoTexts[type];
+    let i = 0;
+    function typeChar() {
+        if (i < text.length) {
+            textEl.textContent += text[i];
+            i++;
+            typingTimeout = setTimeout(typeChar, 12 + Math.random() * 18);
+        }
+    }
+    typeChar();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const demoEl = document.getElementById('demo-text');
+    if (demoEl) {
+        const firstBtn = document.querySelector('.demo-step-btn');
+        setTimeout(() => showDemo('copy', firstBtn), 500);
+    }
+});
+
+function animateCounters() {
+    document.querySelectorAll('.counter-num[data-target]').forEach(el => {
+        const target = parseInt(el.dataset.target);
+        const prefix = el.dataset.prefix || '';
+        const suffix = el.dataset.suffix || '';
+        let current = 0;
+        const step = Math.max(1, Math.floor(target / 30));
+        const interval = setInterval(() => {
+            current += step;
+            if (current >= target) {
+                current = target;
+                clearInterval(interval);
+            }
+            el.textContent = prefix + current + suffix;
+        }, 40);
+    });
+}
+
+if ('IntersectionObserver' in window) {
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCounters();
+                counterObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.3 });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const counterSection = document.querySelector('.counter-section');
+        if (counterSection) counterObserver.observe(counterSection);
+    });
+}
+</script>
 {% endblock %}

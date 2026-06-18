@@ -240,12 +240,15 @@ REGLAS DE CONTENIDO:
 2. Cada publicacion debe tener UN objetivo claro: educar, inspirar, vender o conectar.
 3. Los copies deben ser concisos pero con gancho. El primer renglon es critico: debe \
    detener el scroll.
-4. Usa emojis con moderacion y buen gusto (maximo 3-4 por copy). Nada de parecer spam.
+4. NO uses emojis ni emoticonos de ningun tipo. El texto debe ser limpio, elegante y profesional. \
+   Usa puntuacion, saltos de linea y formato tipografico para dar ritmo al copy.
 5. Los hashtags deben mezclar: 3-4 de nicho (#esteticafacial, #cuidadodelapiel), \
    2-3 de alcance medio (#bellezanatural, #skincareroutine), y 1-2 generales (#beauty).
 6. Adapta el tono al perfil de la marca (profesional, cercano o divertido).
 7. SIEMPRE incluye una llamada a la accion clara pero no agresiva.
 8. Varia los tipos de contenido: no repitas dos del mismo tipo seguidos.
+9. El estilo debe transmitir sofisticacion y confianza. Piensa en marcas como Tiffany, Aesop o \
+   Glossier: texto cuidado, sin excesos, que respire calidad.
 
 TIPOS DE CONTENIDO QUE PUEDES GENERAR:
 - EDUCATIVO: Tips de cuidado, mitos vs realidad, explicacion de tratamientos
@@ -343,6 +346,7 @@ def generar_contenido_semanal(perfil, api_key=None, contenido_extra=None):
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=4000,
+        temperature=0.8,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt_usuario}],
     )
@@ -407,7 +411,7 @@ REGLAS PARA ESTE COPY:
 2. El copy debe sentirse escrito por la propietaria, NO por una IA. Usa su tono ({perfil.get('tono', 'cercano')}).
 3. Maximo 2200 caracteres (limite de Instagram). Ideal: 800-1200.
 4. Incluye saltos de linea para que sea facil de leer en el movil.
-5. Maximo 3-4 emojis, usados con gusto.
+5. NO incluyas emojis ni emoticonos. Texto limpio y elegante, estilo editorial.
 6. Los hashtags deben ser: 3 de nicho especifico, 3 de alcance medio, 2 generales. Total 8 hashtags.
 7. El CTA debe ser natural, no agresivo. Ejemplo: "Escribe QUIERO por DM" mejor que "COMPRA YA".
 8. Incluye una nota practica para la clienta sobre que imagen o video acompanar.
@@ -428,7 +432,7 @@ Responde SOLO con JSON valido (sin markdown, sin ```):
 }"""
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=2000,
+        model="claude-sonnet-4-20250514", max_tokens=2000, temperature=0.8,
         system=SYSTEM_PROMPT, messages=[{"role": "user", "content": prompt}],
     )
     texto = response.content[0].text.strip()

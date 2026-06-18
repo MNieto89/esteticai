@@ -44,10 +44,10 @@ FONDOS_PROFESIONALES = {
         "Rembrandt-style soft even key lighting with fill, "
         "clean modern commercial look, no distractions, photorealistic"
     ),
-    "rosa_suave": (
-        "Soft dusty pink and blush gradient studio background, "
-        "gentle diffused studio lighting, feminine beauty brand editorial, "
-        "subtle golden bokeh highlights, warm skin-flattering tones, "
+    "menta_suave": (
+        "Soft mint green and seafoam gradient studio background, "
+        "gentle diffused studio lighting, premium beauty brand editorial, "
+        "subtle cool-toned bokeh highlights, fresh luminous tones, "
         "Instagram-ready aesthetic, photorealistic"
     ),
     "naturaleza_zen": (
@@ -56,11 +56,11 @@ FONDOS_PROFESIONALES = {
         "small water feature in background, eucalyptus leaves, "
         "peaceful holistic wellness atmosphere, slightly blurred depth, photorealistic"
     ),
-    "dorado_lujo": (
-        "Premium golden champagne gradient backdrop, "
-        "warm elegant side lighting with soft shimmer, "
+    "negro_lujo": (
+        "Premium deep black and dark charcoal gradient backdrop, "
+        "dramatic elegant side lighting with soft highlights, "
         "luxury beauty brand editorial aesthetic, "
-        "subtle metallic texture, sophisticated exclusive feeling, "
+        "subtle matte texture, sophisticated exclusive feeling, "
         "high-fashion beauty commercial, photorealistic"
     ),
 }
@@ -71,13 +71,13 @@ FONDO_RECOMENDADO = {
     "corporal": "neutro_gris",
     "laser": "clinica_blanco",
     "spa": "spa_elegante",
-    "producto": "rosa_suave",
+    "producto": "menta_suave",
     "antes_despues": "neutro_gris",
-    "unas": "rosa_suave",
-    "belleza": "rosa_suave",
+    "unas": "menta_suave",
+    "belleza": "menta_suave",
     "masaje": "spa_elegante",
     "relajacion": "naturaleza_zen",
-    "premium": "dorado_lujo",
+    "premium": "negro_lujo",
     "default": "clinica_blanco",
 }
 

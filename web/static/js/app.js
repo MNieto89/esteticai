@@ -303,7 +303,7 @@ function mostrarSesionExpirada() {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
     overlay.innerHTML = `
         <div style="background:white;border-radius:16px;padding:32px;text-align:center;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
-            <div style="font-size:40px;margin-bottom:12px;">&#128274;</div>
+            <div style="font-size:40px;margin-bottom:12px;"></div>
             <h3 style="margin:0 0 8px;font-size:18px;">Sesi\u00f3n expirada</h3>
             <p style="color:#888;font-size:14px;margin:0 0 20px;">Tu sesi\u00f3n ha caducado por seguridad. Inicia sesi\u00f3n de nuevo para continuar.</p>
             <a href="/login" class="btn btn-primary" style="display:inline-block;padding:10px 32px;">Iniciar sesi\u00f3n</a>
