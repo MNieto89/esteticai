@@ -74,7 +74,7 @@ def _plantilla_base(contenido: str) -> str:
 <html lang="es">
 <head><meta charset="UTF-8"></head>
 <body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8faf9;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f4f5; padding:40px 20px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8faf9; padding:40px 20px;">
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
     <tr><td style="background:linear-gradient(135deg, #62C9B8, #4DB8A7); padding:24px 32px; text-align:center;">

@@ -240,7 +240,7 @@ async def maintenance_middleware(request: Request, call_next):
                 return _HTML(
                     '<html lang="es"><head><meta charset="UTF-8"><title>Mantenimiento</title>'
                     '<style>body{font-family:sans-serif;display:flex;justify-content:center;'
-                    'align-items:center;min-height:100vh;margin:0;background:#f8f4f5;color:#333;'
+                    'align-items:center;min-height:100vh;margin:0;background:#f8faf9;color:#333;'
                     'text-align:center}div{max-width:500px;padding:40px}</style></head>'
                     '<body><div><h1 style="font-size:48px;margin-bottom:16px">&#128736;</h1>'
                     '<h2>Estamos mejorando Esteticai</h2>'
@@ -265,11 +265,11 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
-        "style-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "img-src 'self' data: https://*.fal.ai https://*.amazonaws.com blob:; "
         "connect-src 'self' https://api.stripe.com; "
         "frame-src https://js.stripe.com; "
-        "font-src 'self'; "
+        "font-src 'self' https://fonts.gstatic.com; "
         "base-uri 'self'; "
         "form-action 'self'"
     )
@@ -739,9 +739,9 @@ TIPO_A_CAMPO_USO = {
 
 def get_plan_usuario(user):
     """Devuelve el plan efectivo del usuario (considera expiración del trial)."""
-    plan = user.get("plan") or user["plan"] if isinstance(user, dict) else "trial"
+    plan = user.get("plan", "trial") or "trial"
     if plan == "trial":
-        trial_ends = user.get("trial_ends_at") or user["trial_ends_at"] if isinstance(user, dict) else ""
+        trial_ends = user.get("trial_ends_at", "") or ""
         if trial_ends:
             from datetime import datetime as dt
             try:
@@ -931,9 +931,9 @@ def get_usuario_actual(request: Request):
     if not user_id:
         return None
     db = get_db()
-    user = db.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,)).fetchone()
+    row = db.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,)).fetchone()
     db.close()
-    return user
+    return dict(row) if row else None
 
 
 def requiere_login(request: Request):
@@ -2015,7 +2015,7 @@ async def api_calendario_pdf(request: Request):
 
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name='BrandTitle', fontSize=20, fontName='Helvetica-Bold',
-                                  textColor=colors.HexColor('#e86586'), spaceAfter=6))
+                                  textColor=colors.HexColor('#62C9B8'), spaceAfter=6))
         styles.add(ParagraphStyle(name='SubTitle', fontSize=11, fontName='Helvetica',
                                   textColor=colors.HexColor('#888'), spaceAfter=14))
         styles.add(ParagraphStyle(name='DayTitle', fontSize=13, fontName='Helvetica-Bold',
@@ -2025,7 +2025,7 @@ async def api_calendario_pdf(request: Request):
         styles.add(ParagraphStyle(name='MetaText', fontSize=9, fontName='Helvetica-Oblique',
                                   textColor=colors.HexColor('#999'), spaceAfter=8))
         styles.add(ParagraphStyle(name='StrategyBox', fontSize=10, fontName='Helvetica-Oblique',
-                                  textColor=colors.HexColor('#e86586'), backColor=colors.HexColor('#fef0f3'),
+                                  textColor=colors.HexColor('#62C9B8'), backColor=colors.HexColor('#f0faf8'),
                                   borderPadding=8, spaceAfter=14, leading=14))
 
         elements = []
@@ -2211,7 +2211,7 @@ async def api_componer_antes_despues(
         "tratamiento": tratamiento or "Resultados reales",
         "sesiones": sesiones,
         "cta": cta or "Reserva tu valoracion gratuita",
-        "color_marca": (199, 121, 135),  # Rosa Esteticai
+        "color_marca": (98, 201, 184),  # Mint Esteticai (#62C9B8)
     }
 
     try:
