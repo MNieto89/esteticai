@@ -1869,8 +1869,9 @@ async def api_generar_copy(request: Request):
             return JSONResponse({"error": "API key no configurada. Contacta al administrador."}, status_code=500)
         if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
             return JSONResponse({"error": "La generaci\u00f3n tard\u00f3 demasiado. Int\u00e9ntalo de nuevo."}, status_code=500)
-        logger.error("Copy generation failed: %s", error_msg)
-        return JSONResponse({"error": "No se pudo generar el copy. Int\u00e9ntalo de nuevo."}, status_code=500)
+        import traceback
+        logger.error("Copy generation failed: %s\n%s", error_msg, traceback.format_exc())
+        return JSONResponse({"error": f"No se pudo generar el copy: {error_msg}"}, status_code=500)
 
 
 @app.post("/api/generar/imagen")
@@ -1908,7 +1909,7 @@ async def api_generar_imagen(request: Request):
         return JSONResponse({"ok": True, "imagen": resultado}, headers=rl_info)
     except Exception as e:
         logger.error("Image generation failed: %s", e)
-        return JSONResponse({"error": "No se pudo generar la imagen. Int\u00e9ntalo de nuevo."}, status_code=500)
+        return JSONResponse({"error": f"No se pudo generar la imagen: {e}"}, status_code=500)
 
 
 @app.post("/api/generar/video")
@@ -1979,7 +1980,7 @@ async def api_generar_calendario(request: Request):
         return JSONResponse({"ok": True, "calendario": cal}, headers=rl_info)
     except Exception as e:
         logger.error("Calendar generation failed: %s", e)
-        return JSONResponse({"error": "No se pudo generar el calendario. Int\u00e9ntalo de nuevo."}, status_code=500)
+        return JSONResponse({"error": f"No se pudo generar el calendario: {e}"}, status_code=500)
 
 
 # ============================================================
