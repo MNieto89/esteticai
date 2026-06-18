@@ -472,7 +472,42 @@ async def health():
         "usuarios": db_usuarios,
         "uptime": f"{horas}h {minutos}m {segundos}s",
         "environment": "production" if IS_PRODUCTION else "development",
+        "render_env": os.environ.get("RENDER", "NOT SET"),
+        "is_production": IS_PRODUCTION,
+        "db_path": str(DB_PATH),
     }
+
+
+@app.post("/debug-registro")
+async def debug_registro(request: Request):
+    """Endpoint temporal para diagnosticar el error 500 en registro."""
+    import traceback
+    try:
+        form = await request.form()
+        form_keys = list(form.keys())
+
+        # Simulate what registro does
+        nombre = form.get("nombre", "TestDebug")
+        email = form.get("email", f"debug_{secrets.token_hex(4)}@test.com")
+        password = form.get("password", "test123456")
+
+        # Test hash
+        pw_hash = hash_password(password)
+
+        # Test DB write
+        db = get_db()
+        trial_ends = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+        db.execute(
+            "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at, email_verificado) VALUES (?, ?, ?, 'trial', ?, 0)",
+            (email, pw_hash, nombre, trial_ends)
+        )
+        db.commit()
+        user = db.execute("SELECT id, email FROM usuarios WHERE email = ?", (email,)).fetchone()
+        db.close()
+
+        return {"ok": True, "user_id": user["id"], "email": user["email"], "form_keys": form_keys}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()}
 
 
 # ============================================================
