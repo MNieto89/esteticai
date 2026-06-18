@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Esteticai - Contenido para redes sociales con IA para profesionales de la est&eacute;tica{% endblock %}
+{% block title %}Esteticai - Tu asistente de contenido con IA para est&eacute;tica y belleza{% endblock %}
 {% block nav %}
 <nav class="navbar navbar-home">
     <div class="nav-brand">Esteticai</div>
@@ -11,23 +11,29 @@
 </nav>
 {% endblock %}
 {% block content %}
+
+<!-- HERO -->
 <div class="hero">
     <div class="hero-content">
-        <span class="hero-badge">IA especializada en est&eacute;tica y belleza</span>
-        <h1>Tu contenido de redes sociales profesional en segundos</h1>
-        <p class="hero-sub">Genera copys, im&aacute;genes, videos y calendarios adaptados a tu negocio. Sin contratar community manager. Sin perder horas creando contenido.</p>
+        <span class="hero-badge">IA dise&ntilde;ada para profesionales de la belleza</span>
+        <h1>Contenido profesional para redes sociales <em>en segundos</em></h1>
+        <p class="hero-sub">Copys, im&aacute;genes, videos y calendarios adaptados a tu negocio. Sin community manager. Sin perder horas. Todo desde tu navegador o tu m&oacute;vil.</p>
         <div class="hero-buttons">
             <a href="/registro" class="btn btn-primary btn-lg">Probar 7 d&iacute;as gratis</a>
-            <a href="/precios" class="btn btn-secondary">Ver precios</a>
+            <a href="/precios" class="btn btn-secondary btn-lg">Ver precios</a>
         </div>
-        <p class="hero-trust">Desde 59&euro;/mes &middot; Sin permanencia &middot; Cancela cuando quieras</p>
+        <p class="hero-trust">Desde 59&euro;/mes &middot; Sin permanencia &middot; Funciona en web y m&oacute;vil</p>
     </div>
 </div>
 
+<!-- PROBLEMA -->
 <div class="landing-section">
     <div class="landing-content">
-        <span class="section-label">El problema</span>
-        <h2>&iquest;Te suena esto?</h2>
+        <div style="text-align:center;">
+            <span class="section-label">El problema</span>
+            <h2>&iquest;Te suena esto?</h2>
+            <p class="section-subtitle">Crear contenido para redes sociales es una carga que no deber&iacute;a alejarte de lo que mejor haces: cuidar a tus clientas.</p>
+        </div>
         <div class="problem-grid">
             <div class="problem-card">
                 <span class="problem-icon">&#9200;</span>
@@ -45,49 +51,57 @@
     </div>
 </div>
 
+<!-- HERRAMIENTAS -->
 <div class="landing-section landing-dark">
     <div class="landing-content">
-        <span class="section-label">La soluci&oacute;n</span>
-        <h2>6 herramientas de IA dise&ntilde;adas para est&eacute;tica</h2>
+        <div style="text-align:center;">
+            <span class="section-label">Tus herramientas</span>
+            <h2>6 motores de IA a tu servicio</h2>
+            <p class="section-subtitle">Cada herramienta est&aacute; dise&ntilde;ada espec&iacute;ficamente para negocios de est&eacute;tica y belleza. Resultados profesionales, cero conocimientos t&eacute;cnicos.</p>
+        </div>
         <div class="features-grid">
             <div class="feature-card">
-                <div class="feature-card-icon">&#9997;</div>
+                <div class="feature-card-icon">&#9997;&#65039;</div>
                 <h3>Copys profesionales</h3>
-                <p>Textos con hashtags, CTAs y estrategia para cada tipo de post. Educativos, testimonios, promociones y m&aacute;s.</p>
+                <p>Textos con hashtags, CTAs y estrategia para 8 tipos de post: educativos, testimonios, promociones, producto y m&aacute;s.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-card-icon">&#128247;</div>
                 <h3>Im&aacute;genes con IA</h3>
-                <p>Fotos profesionales generadas para tus servicios. Perfectas para feed, stories y portadas de Reels.</p>
+                <p>Fotos profesionales generadas con Flux para tus servicios. 6 formatos: feed, stories, portadas de Reels, carruseles.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-card-icon">&#127910;</div>
                 <h3>Videos para Reels</h3>
-                <p>Convierte im&aacute;genes en videos animados para Reels y TikTok. Zoom, panor&aacute;mica, revelaci&oacute;n dram&aacute;tica.</p>
+                <p>Convierte im&aacute;genes en videos animados con Kling 3.0. Zoom, panor&aacute;mica, &oacute;rbita y revelaci&oacute;n dram&aacute;tica.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-card-icon">&#128260;</div>
                 <h3>Antes y Despu&eacute;s</h3>
-                <p>Sube las dos fotos y genera composiciones profesionales listas para publicar. 4 plantillas diferentes.</p>
+                <p>Sube dos fotos y genera composiciones profesionales con 4 plantillas: lado a lado, premium, diagonal y story.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-card-icon">&#10024;</div>
                 <h3>Mejora de fotos</h3>
-                <p>Sube tu foto real y la transformamos: fondo profesional, mejor calidad y aspecto de estudio.</p>
+                <p>Sube una foto real y la IA le cambia el fondo, mejora la calidad y le da aspecto de estudio profesional.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-card-icon">&#128197;</div>
                 <h3>Calendario semanal</h3>
-                <p>Plan completo de 7 d&iacute;as con estrategia, copys, horarios y formatos. Exportable a PDF.</p>
+                <p>Plan de 7 d&iacute;as con estrategia, copys, horarios y formatos recomendados. Exportable y listo para seguir.</p>
             </div>
         </div>
     </div>
 </div>
 
+<!-- COMO FUNCIONA -->
 <div class="landing-section">
     <div class="landing-content">
-        <span class="section-label">C&oacute;mo funciona</span>
-        <h2>De 0 a publicar en 2 minutos</h2>
+        <div style="text-align:center;">
+            <span class="section-label">As&iacute; de f&aacute;cil</span>
+            <h2>De 0 a publicar en 2 minutos</h2>
+            <p class="section-subtitle">Sin conocimientos t&eacute;cnicos. Sin descargas. Todo desde tu navegador.</p>
+        </div>
         <div class="steps">
             <div class="step">
                 <div class="step-num">1</div>
@@ -97,48 +111,74 @@
             <div class="step">
                 <div class="step-num">2</div>
                 <h3>Elige y genera</h3>
-                <p>Selecciona el tipo de contenido, el servicio y pulsa generar. La IA crea todo en segundos.</p>
+                <p>Selecciona qu&eacute; necesitas &mdash; un copy, una imagen, un v&iacute;deo &mdash; y pulsa generar. Listo en segundos.</p>
             </div>
             <div class="step">
                 <div class="step-num">3</div>
                 <h3>Descarga y publica</h3>
-                <p>Copia el texto, descarga la imagen y publica. Contenido profesional sin esfuerzo.</p>
+                <p>Copia el texto, descarga la imagen y publica directamente en tus redes. Contenido profesional sin esfuerzo.</p>
             </div>
         </div>
     </div>
 </div>
 
+<!-- WEB + MOVIL -->
 <div class="landing-section landing-dark">
     <div class="landing-content">
-        <h2>Para qui&eacute;n es Esteticai</h2>
+        <div style="text-align:center;">
+            <span class="section-label">Donde quieras</span>
+            <h2>En tu ordenador y en tu m&oacute;vil</h2>
+            <p class="section-subtitle">Accede desde cualquier navegador. O instala la app en tu m&oacute;vil con un solo toque. Mismas credenciales, mismas herramientas.</p>
+        </div>
+        <div class="problem-grid">
+            <div class="problem-card">
+                <span class="problem-icon">&#128187;</span>
+                <p><strong>Web completa</strong><br>Accede a todas las herramientas desde tu navegador, sin descargar nada.</p>
+            </div>
+            <div class="problem-card">
+                <span class="problem-icon">&#128241;</span>
+                <p><strong>App en tu m&oacute;vil</strong><br>Inst&aacute;lala como una app desde el navegador. Funciona offline y se abre instant&aacute;neamente.</p>
+            </div>
+            <div class="problem-card">
+                <span class="problem-icon">&#128274;</span>
+                <p><strong>Un solo usuario</strong><br>Reg&iacute;strate en la web y usa las mismas credenciales en todos tus dispositivos.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PARA QUIEN -->
+<div class="landing-section">
+    <div class="landing-content">
+        <div style="text-align:center;">
+            <span class="section-label">Tu sector</span>
+            <h2>Dise&ntilde;ado para profesionales de la belleza</h2>
+        </div>
         <div class="audience-grid">
             <div class="audience-card">
-                <h3>&#128142; Cl&iacute;nicas de est&eacute;tica</h3>
+                <h3>&#128142; Cl&iacute;nicas</h3>
                 <p>Facial, corporal, l&aacute;ser, aparatolog&iacute;a. Contenido que transmite profesionalidad y resultados.</p>
             </div>
             <div class="audience-card">
-                <h3>&#128133; Centros de belleza</h3>
+                <h3>&#128133; Belleza</h3>
                 <p>Peluquer&iacute;as, centros de u&ntilde;as, maquillaje. Posts que atraen clientas y muestran tu talento.</p>
             </div>
             <div class="audience-card">
-                <h3>&#127807; Spas y bienestar</h3>
+                <h3>&#127807; Spas</h3>
                 <p>Masajes, tratamientos corporales, relax. Im&aacute;genes y textos que transmiten calma y lujo.</p>
             </div>
             <div class="audience-card">
                 <h3>&#128188; Distribuidoras</h3>
-                <p>Contenido personalizado con los productos de tu marca. Diferencial frente a la competencia.</p>
+                <p>Contenido personalizado con los productos de tu marca. Ideal para partners y representantes.</p>
             </div>
         </div>
     </div>
 </div>
 
-<div class="landing-section">
+<!-- DATOS -->
+<div class="landing-section landing-dark">
     <div class="landing-content">
         <div class="social-proof">
-            <div class="proof-stat">
-                <span class="proof-num">26</span>
-                <span class="proof-label">Servicios est&eacute;ticos en nuestra base de conocimiento</span>
-            </div>
             <div class="proof-stat">
                 <span class="proof-num">6</span>
                 <span class="proof-label">Herramientas de IA especializadas</span>
@@ -147,19 +187,25 @@
                 <span class="proof-num">&lt;30s</span>
                 <span class="proof-label">Tiempo medio de generaci&oacute;n</span>
             </div>
+            <div class="proof-stat">
+                <span class="proof-num">24/7</span>
+                <span class="proof-label">Disponible cuando t&uacute; quieras</span>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- CTA FINAL -->
 <div class="landing-section landing-rosa">
     <div class="landing-content landing-cta">
-        <h2>Empieza a crear contenido profesional hoy</h2>
+        <h2>Tu contenido profesional empieza hoy</h2>
         <p>7 d&iacute;as de prueba gratuita. Sin tarjeta de cr&eacute;dito. Sin permanencia.</p>
         <a href="/registro" class="btn btn-primary btn-lg">Crear cuenta gratis</a>
-        <p class="cta-small"><a href="/precios" style="color:var(--rosa-oscuro);">Ver planes y precios</a></p>
+        <p class="cta-small"><a href="/precios">Ver planes y precios &rarr;</a></p>
     </div>
 </div>
 
+<!-- FOOTER -->
 <footer class="landing-footer">
     <div class="footer-content">
         <div class="footer-brand">
@@ -177,4 +223,5 @@
         </div>
     </div>
 </footer>
+
 {% endblock %}

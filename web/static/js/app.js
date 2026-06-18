@@ -1,8 +1,65 @@
 /* ============================================================
-   ESTETICAI - Frontend v1.0
+   ESTETICAI - Frontend v2.0 Premium
    ============================================================ */
 
 let ultimaImagenUrl = null;
+
+// ============================================================
+// PWA INSTALL
+// ============================================================
+
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('pwa-install');
+    if (banner && !localStorage.getItem('esteticai_pwa_dismissed')) {
+        banner.style.display = 'flex';
+    }
+});
+
+function instalarPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') {
+                const banner = document.getElementById('pwa-install');
+                if (banner) banner.style.display = 'none';
+            }
+            deferredPrompt = null;
+        });
+    }
+}
+
+function cerrarPWABanner() {
+    const banner = document.getElementById('pwa-install');
+    if (banner) banner.style.display = 'none';
+    localStorage.setItem('esteticai_pwa_dismissed', '1');
+}
+
+// ============================================================
+// SCROLL REVEAL (landing page)
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    const revealElements = document.querySelectorAll('.landing-section');
+    if (revealElements.length > 0 && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        revealElements.forEach(el => {
+            el.classList.add('reveal');
+            observer.observe(el);
+        });
+    }
+});
 
 
 // ============================================================

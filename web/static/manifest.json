@@ -1,17 +1,49 @@
 {
-  "name": "Esteticai",
+  "name": "Esteticai - IA para Estetica",
   "short_name": "Esteticai",
-  "description": "Genera contenido profesional para redes sociales con IA",
+  "description": "Genera contenido profesional para redes sociales con IA. Copys, imagenes, videos y calendarios para tu negocio de estetica.",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8f4f5",
-  "theme_color": "#e86586",
+  "orientation": "portrait",
+  "background_color": "#faf9f8",
+  "theme_color": "#d4738c",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/static/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/static/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Generar Copy",
+      "short_name": "Copy",
+      "url": "/dashboard#card-copy",
+      "description": "Crea textos profesionales para redes sociales"
+    },
+    {
+      "name": "Generar Imagen",
+      "short_name": "Imagen",
+      "url": "/dashboard#card-imagen",
+      "description": "Genera imagenes con IA para tus posts"
+    },
+    {
+      "name": "Calendario Semanal",
+      "short_name": "Calendario",
+      "url": "/dashboard#card-calendario",
+      "description": "Plan completo de contenido semanal"
     }
   ]
 }

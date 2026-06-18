@@ -20,26 +20,26 @@
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
         <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.gen_hoy }}</div>
-            <div style="font-size:13px; color:var(--gris);">Generaciones hoy</div>
+            <div style="font-size:13px; color:var(--gris-500);">Generaciones hoy</div>
         </div>
         <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.gen_semana }}</div>
-            <div style="font-size:13px; color:var(--gris);">Generaciones (7d)</div>
+            <div style="font-size:13px; color:var(--gris-500);">Generaciones (7d)</div>
         </div>
         <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.registros_semana }}</div>
-            <div style="font-size:13px; color:var(--gris);">Registros (7d)</div>
+            <div style="font-size:13px; color:var(--gris-500);">Registros (7d)</div>
         </div>
         <div style="background:white; border-radius:12px; padding:16px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
             <div style="font-size:24px; font-weight:700; color:var(--rosa);">{{ stats.total_usuarios }}</div>
-            <div style="font-size:13px; color:var(--gris);">Usuarios totales</div>
+            <div style="font-size:13px; color:var(--gris-500);">Usuarios totales</div>
         </div>
     </div>
 
     <!-- DESGLOSE: PLANES + TIPOS -->
     <div class="admin-desglose">
         <div style="background:white; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-            <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris);">Por plan</h3>
+            <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris-500);">Por plan</h3>
             {% for plan_id, count in stats.por_plan.items() %}
             <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px;">
                 <span><span class="plan-badge plan-badge-{{ plan_id }}" style="font-size:11px;">{{ plan_id|capitalize }}</span></span>
@@ -48,7 +48,7 @@
             {% endfor %}
         </div>
         <div style="background:white; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-            <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris);">Por tipo de contenido</h3>
+            <h3 style="margin:0 0 12px; font-size:14px; color:var(--gris-500);">Por tipo de contenido</h3>
             {% for tipo, count in stats.por_tipo.items() %}
             <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px;">
                 <span>{{ tipo|capitalize }}</span>
@@ -81,7 +81,7 @@
                     <td style="padding:8px; font-size:13px;">{{ u.email }}</td>
                     <td style="padding:8px;"><span class="plan-badge plan-badge-{{ u.plan or 'trial' }}" style="font-size:11px;">{{ u.plan or 'trial' }}</span></td>
                     <td style="padding:8px;">{% if u.email_verificado %}&#9989;{% else %}&#10060;{% endif %}</td>
-                    <td style="padding:8px; font-size:12px; color:var(--gris);">{{ u.creado_en[:10] if u.creado_en else '' }}</td>
+                    <td style="padding:8px; font-size:12px; color:var(--gris-500);">{{ u.creado_en[:10] if u.creado_en else '' }}</td>
                     <td style="padding:8px; text-align:center;">{{ u.gen_count or 0 }}</td>
                 </tr>
                 {% endfor %}
@@ -103,7 +103,7 @@
             <tbody>
                 {% for g in generaciones_recientes %}
                 <tr style="border-bottom:1px solid #f0f0f0;">
-                    <td style="padding:8px; font-size:12px; color:var(--gris);">{{ g.creado_en[:16].replace('T', ' ') if g.creado_en else '' }}</td>
+                    <td style="padding:8px; font-size:12px; color:var(--gris-500);">{{ g.creado_en[:16].replace('T', ' ') if g.creado_en else '' }}</td>
                     <td style="padding:8px;">{{ g.nombre }}</td>
                     <td style="padding:8px;"><span class="copy-tag">{{ g.tipo }}</span></td>
                 </tr>

@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: esteticai
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn web.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FAL_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: ALLOWED_HOSTS
+        value: "esteticai.onrender.com,esteticai.com"
+      - key: EMAIL_API_KEY
+        sync: false
+    disk:
+      name: esteticai-data
+      mountPath: /data
+      sizeGB: 1
+    healthCheckPath: /
+    autoDeploy: true

@@ -14,8 +14,15 @@
 {% endblock %}
 {% block content %}
 <div class="dashboard">
+    <!-- PWA INSTALL -->
+    <div class="pwa-install-banner" id="pwa-install" style="display:none;">
+        <p>&#128241; Instala Esteticai en tu m&oacute;vil para acceder m&aacute;s r&aacute;pido</p>
+        <button class="btn btn-sm" onclick="instalarPWA()">Instalar app</button>
+        <button class="pwa-dismiss" onclick="cerrarPWABanner()" aria-label="Cerrar">&times;</button>
+    </div>
+
     <div class="dash-header">
-        <h1>Hola, {{ user.nombre }}!</h1>
+        <h1>Hola, {{ user.nombre }}</h1>
         <p>&iquest;Qu&eacute; quieres crear hoy para <strong>{{ perfil.nombre_negocio }}</strong>?</p>
     </div>
 

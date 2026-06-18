@@ -1,5 +1,5 @@
-// Esteticai Service Worker v2
-const CACHE_NAME = 'esteticai-v2';
+// Esteticai Service Worker v3 — PWA Premium
+const CACHE_NAME = 'esteticai-v3';
 const STATIC_ASSETS = [
     '/static/css/style.css',
     '/static/js/app.js',
@@ -27,12 +27,17 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch: cache-first for static assets, network-first for everything else
+// Fetch: stale-while-revalidate for statics, network-first for pages
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Static assets: cache-first
-    if (url.pathname.startsWith('/static/')) {
+    // Skip non-GET and API requests
+    if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) {
+        return;
+    }
+
+    // Google Fonts: cache-first (immutable)
+    if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
         event.respondWith(
             caches.match(event.request).then((cached) => {
                 if (cached) return cached;
@@ -48,17 +53,38 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // API and pages: network-first, no cache
-    if (url.pathname.startsWith('/api/') || event.request.method !== 'GET') {
+    // Static assets: stale-while-revalidate
+    if (url.pathname.startsWith('/static/')) {
+        event.respondWith(
+            caches.match(event.request).then((cached) => {
+                const fetchPromise = fetch(event.request).then((response) => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    }
+                    return response;
+                }).catch(() => cached);
+
+                return cached || fetchPromise;
+            })
+        );
         return;
     }
 
-    // HTML pages: network-first with offline fallback page
+    // HTML pages: network-first with offline fallback
     event.respondWith(
-        fetch(event.request).catch(() =>
-            caches.match(event.request).then((cached) =>
-                cached || caches.match('/static/offline.html')
+        fetch(event.request)
+            .then((response) => {
+                if (response.ok && url.pathname === '/dashboard') {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                }
+                return response;
+            })
+            .catch(() =>
+                caches.match(event.request).then((cached) =>
+                    cached || caches.match('/static/offline.html')
+                )
             )
-        )
     );
 });

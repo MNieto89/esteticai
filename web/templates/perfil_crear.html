@@ -167,7 +167,7 @@ Trato personalizado">{% if perfil and perfil.valores %}{% for v in perfil.valore
 
         {% if modo == "editar" %}
         <div style="margin-top:32px; padding-top:24px; border-top:1px solid #eee;">
-            <h3 style="font-size:14px; color:var(--gris); margin-bottom:12px;">Cambiar contrase&ntilde;a</h3>
+            <h3 style="font-size:14px; color:var(--gris-500); margin-bottom:12px;">Cambiar contrase&ntilde;a</h3>
             {% if password_error %}
             <div class="alert alert-error" style="margin-bottom:12px;">{{ password_error }}</div>
             {% endif %}
@@ -190,7 +190,7 @@ Trato personalizado">{% if perfil and perfil.valores %}{% for v in perfil.valore
         </div>
 
         <div style="margin-top:32px; padding-top:24px; border-top:1px solid #eee;">
-            <h3 style="font-size:14px; color:var(--gris); margin-bottom:12px;">Tus datos (RGPD)</h3>
+            <h3 style="font-size:14px; color:var(--gris-500); margin-bottom:12px;">Tus datos (RGPD)</h3>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <a href="/cuenta/exportar-datos" class="btn btn-secondary btn-sm" download>Exportar mis datos</a>
                 <a href="/cuenta/exportar-historial" class="btn btn-secondary btn-sm" download>Exportar historial (CSV)</a>
