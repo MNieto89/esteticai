@@ -5,6 +5,19 @@
 let ultimaImagenUrl = null;
 
 // ============================================================
+// MEDIA PROXY - Redirige URLs de fal.media a traves del servidor
+// para evitar problemas de CORS y CSP
+// ============================================================
+
+function mediaProxy(url) {
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) return url;
+    if (url.includes('fal.media') || url.includes('fal.ai')) {
+        return '/api/media/proxy?url=' + encodeURIComponent(url);
+    }
+    return url;
+}
+
+// ============================================================
 // PWA INSTALL
 // ============================================================
 
@@ -422,7 +435,8 @@ async function generarImagen() {
             const img = data.imagen;
             const tieneUrl = img.url && (img.url.startsWith('http') || img.url.startsWith('data:'));
             if (tieneUrl) {
-                let html = `<img src="${img.url}" alt="Imagen generada">`;
+                const imgDisplay = mediaProxy(img.url);
+                let html = `<img src="${imgDisplay}" alt="Imagen generada">`;
 
                 if (img.es_demo) {
                     html += `<div class="demo-aviso">
@@ -432,7 +446,7 @@ async function generarImagen() {
                 } else {
                     ultimaImagenUrl = img.url;
                     html += `<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn btn-primary" onclick="descargarImagen('${img.url}', 'esteticai_imagen')">
+                        <button class="btn btn-primary" onclick="descargarImagen('${imgDisplay}', 'esteticai_imagen')">
                             Descargar imagen
                         </button>
                         <button class="btn btn-secondary" onclick="prepararVideo()">
@@ -515,12 +529,13 @@ async function generarVideo() {
                     <strong>Modo demo</strong> &mdash; ${video.nota || 'La generaci&oacute;n de video requiere una API key de fal.ai con saldo.'}
                 </div>`;
             } else if (video.url && video.url.startsWith('http')) {
+                const vidDisplay = mediaProxy(video.url);
                 resultDiv.innerHTML = `
                     <video controls autoplay muted loop style="max-width:100%;border-radius:8px;">
-                        <source src="${video.url}" type="video/mp4">
+                        <source src="${vidDisplay}" type="video/mp4">
                     </video>
                     <div style="margin-top:8px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-                        <a href="${video.url}" download class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+                        <a href="${vidDisplay}" download class="btn btn-primary">
                             Descargar video
                         </a>
                         <button class="btn btn-secondary" onclick="generarVideo()">
@@ -697,21 +712,23 @@ async function mejorarFoto() {
             let html = '';
 
             if (r.url_final && r.url_final.startsWith('http')) {
+                const origProxy = mediaProxy(r.original_url);
+                const finalProxy = mediaProxy(r.url_final);
                 html += `<div class="foto-comparacion">`;
                 html += `<div class="foto-antes">`;
                 html += `<span class="foto-label">Original</span>`;
-                html += `<img src="${r.original_url}" alt="Original">`;
+                html += `<img src="${origProxy}" alt="Original">`;
                 html += `</div>`;
                 html += `<div class="foto-despues">`;
                 html += `<span class="foto-label">Mejorada</span>`;
-                html += `<img src="${r.url_final}" alt="Mejorada">`;
+                html += `<img src="${finalProxy}" alt="Mejorada">`;
                 html += `</div>`;
                 html += `</div>`;
 
                 html += `<div class="foto-info"><span>${r.total_pasos} mejoras aplicadas</span></div>`;
 
                 html += `<div class="foto-actions">`;
-                html += `<button class="btn btn-primary" onclick="descargarImagen('${r.url_final}', 'esteticai_foto_mejorada')">Descargar imagen</button>`;
+                html += `<button class="btn btn-primary" onclick="descargarImagen('${finalProxy}', 'esteticai_foto_mejorada')">Descargar imagen</button>`;
                 html += `<button class="btn btn-secondary" onclick="usarParaVideo('${r.url_final}')">Crear video</button>`;
                 html += `<button class="btn btn-secondary" onclick="mejorarFoto()">Regenerar</button>`;
                 html += `</div>`;

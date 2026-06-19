@@ -63,7 +63,7 @@ logging.basicConfig(level=logging.INFO, handlers=[_handler])
 logger = logging.getLogger("esteticai")
 
 from fastapi import FastAPI, Request, HTTPException, Depends, Form, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -156,6 +156,21 @@ class CachedStaticFiles(_StaticFiles):
 
 app.mount("/static", CachedStaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+# Filtro Jinja2: convierte URLs de fal.media al proxy local
+def _jinja_media_proxy(url):
+    """Convierte URLs de fal.media/fal.ai al endpoint proxy local."""
+    if not url or not isinstance(url, str):
+        return url or ""
+    if url.startswith("data:") or url.startswith("blob:"):
+        return url
+    if "fal.media" in url or "fal.ai" in url:
+        from urllib.parse import quote
+        return "/api/media/proxy?url=" + quote(url, safe="")
+    return url
+
+templates.env.filters["media_proxy"] = _jinja_media_proxy
 
 
 # ============================================================
@@ -359,6 +374,7 @@ RATE_LIMITS = {
     "/api/mejorar-foto": (15, 3600),         # 15 fotos/hora
     "/api/componer-antes-despues": (20, 3600),  # 20 composiciones/hora
     "/api/calendario/pdf": (20, 3600),       # 20 PDFs/hora
+    "/api/media/proxy": (60, 60),             # 60 proxys/minuto (media assets)
 }
 
 
@@ -1995,6 +2011,134 @@ async def api_generar_video(request: Request):
         if "timeout" in error_msg.lower():
             return JSONResponse({"error": "La generaci\u00f3n de video tard\u00f3 demasiado. Prueba con 5 segundos."}, status_code=500)
         return JSONResponse({"error": "No se pudo generar el video. Int\u00e9ntalo de nuevo."}, status_code=500)
+
+
+# ============================================================
+# PROXY DE MEDIA (fal.ai/fal.media)
+# Sirve contenido de fal.media a traves del propio servidor
+# para evitar problemas de CORS y CSP.
+# ============================================================
+
+# Dominios permitidos (anti-SSRF)
+_PROXY_DOMINIOS_PERMITIDOS = {
+    "fal.media",
+    "fal.ai",
+    "v3.fal.media",
+    "v3b.fal.media",
+    "cdn.fal.ai",
+    "storage.fal.ai",
+}
+
+_PROXY_MAX_SIZE = 50 * 1024 * 1024  # 50MB max
+_PROXY_TIMEOUT = 30  # segundos
+
+
+def _validar_url_proxy(url: str) -> bool:
+    """Valida que la URL sea de un dominio fal.ai/fal.media permitido.
+    Previene SSRF bloqueando IPs privadas, localhost y dominios no autorizados."""
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname or ""
+        # Bloquear IPs directas (previene SSRF a red interna)
+        import ipaddress
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip.is_private or ip.is_loopback or ip.is_reserved:
+                return False
+        except ValueError:
+            pass  # No es una IP, es un dominio - ok
+        # Verificar que el dominio esta en la lista permitida
+        for dominio in _PROXY_DOMINIOS_PERMITIDOS:
+            if host == dominio or host.endswith("." + dominio):
+                return True
+        return False
+    except Exception:
+        return False
+
+
+@app.get("/api/media/proxy")
+async def api_media_proxy(request: Request, url: str = ""):
+    """Proxy de streaming para archivos multimedia de fal.ai.
+    Solo permite dominios fal.media/fal.ai. Requiere autenticacion."""
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+
+    if not url or not url.startswith("http"):
+        return JSONResponse({"error": "URL no proporcionada"}, status_code=400)
+
+    if not _validar_url_proxy(url):
+        logger.warning("Proxy: URL rechazada (dominio no permitido): %s", url[:100])
+        return JSONResponse({"error": "Dominio no permitido"}, status_code=403)
+
+    # Rate limiting
+    rl_ok, rl_info = check_rate_limit(user["id"], "/api/media/proxy")
+    if not rl_ok:
+        return JSONResponse(
+            {"error": "Demasiadas peticiones de media. Espera un momento."},
+            status_code=429, headers=rl_info
+        )
+
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=_PROXY_TIMEOUT, follow_redirects=True) as client:
+            resp = await client.send(
+                client.build_request("GET", url),
+                stream=True,
+            )
+
+            if resp.status_code != 200:
+                await resp.aclose()
+                return JSONResponse(
+                    {"error": f"El archivo no esta disponible (HTTP {resp.status_code})"},
+                    status_code=502
+                )
+
+            # Verificar tamano si el header lo indica
+            content_length = resp.headers.get("content-length")
+            if content_length and int(content_length) > _PROXY_MAX_SIZE:
+                await resp.aclose()
+                return JSONResponse(
+                    {"error": "Archivo demasiado grande"},
+                    status_code=413
+                )
+
+            # Determinar content-type
+            content_type = resp.headers.get("content-type", "application/octet-stream")
+
+            # Streaming: leemos chunks y los reenviamos
+            async def stream_chunks():
+                total = 0
+                async for chunk in resp.aiter_bytes(chunk_size=65536):
+                    total += len(chunk)
+                    if total > _PROXY_MAX_SIZE:
+                        break
+                    yield chunk
+                await resp.aclose()
+
+            headers = {
+                "Cache-Control": "public, max-age=3600",
+                "X-Content-Type-Options": "nosniff",
+            }
+            if content_length:
+                headers["Content-Length"] = content_length
+
+            return StreamingResponse(
+                stream_chunks(),
+                media_type=content_type,
+                headers=headers,
+            )
+
+    except httpx.TimeoutException:
+        logger.warning("Proxy: timeout descargando %s", url[:100])
+        return JSONResponse({"error": "Timeout descargando el archivo"}, status_code=504)
+    except Exception as e:
+        logger.error("Proxy: error descargando %s: %s", url[:100], e)
+        return JSONResponse({"error": "No se pudo obtener el archivo"}, status_code=502)
 
 
 @app.post("/api/generar/calendario")

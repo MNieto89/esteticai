@@ -260,15 +260,15 @@
                     <span class="historial-fecha">{{ gen.creado_en[:16].replace('T', ' ') }}</span>
                 </div>
                 {% if gen.imagen_url and (gen.imagen_url.startswith('http') or gen.imagen_url.startswith('data:')) %}
-                <img src="{{ gen.imagen_url }}" alt="Imagen generada" class="historial-img" loading="lazy">
+                <img src="{{ gen.imagen_url|media_proxy }}" alt="Imagen generada" class="historial-img" loading="lazy">
                 <div class="historial-actions">
-                    <button class="btn btn-sm" onclick="descargarImagen('{{ gen.imagen_url }}', 'esteticai_{{ gen.tipo }}')">Descargar</button>
+                    <button class="btn btn-sm" onclick="descargarImagen('{{ gen.imagen_url|media_proxy }}', 'esteticai_{{ gen.tipo }}')">Descargar</button>
                 </div>
                 {% endif %}
                 {% if gen.video_url and gen.video_url.startswith('http') %}
                 <div class="historial-video-thumb">
                     <span class="historial-play">&#9654;</span>
-                    <a href="{{ gen.video_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm">Ver video</a>
+                    <a href="{{ gen.video_url|media_proxy }}" rel="noopener noreferrer" class="btn btn-sm">Ver video</a>
                 </div>
                 {% endif %}
                 {% if gen.contenido and gen.tipo == 'copy' %}
