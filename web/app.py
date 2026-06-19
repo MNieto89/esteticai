@@ -2231,6 +2231,7 @@ async def api_calendario_pdf(request: Request):
 async def api_mejorar_foto(
     request: Request,
     foto: UploadFile = File(...),
+    nivel: str = Form("profesional"),
     tipo_fondo: str = Form("clinica_blanco"),
     tipo_tratamiento: str = Form("default"),
     eliminar_fondo: str = Form("true"),
@@ -2260,8 +2261,9 @@ async def api_mejorar_foto(
         if not image_url:
             return JSONResponse({"error": "No se pudo subir la imagen"}, status_code=500)
 
-        # Procesar con pipeline
+        # Procesar con pipeline profesional
         opciones = {
+            "nivel": nivel if nivel in ("rapido", "profesional", "premium") else "profesional",
             "eliminar_fondo": eliminar_fondo.lower() == "true",
             "mejorar_calidad": mejorar_calidad.lower() == "true",
             "tipo_fondo": tipo_fondo,
@@ -2278,6 +2280,7 @@ async def api_mejorar_foto(
             imagen_url=resultado.get("url_final"),
             metadata={
                 "original_url": resultado.get("original_url"),
+                "nivel": nivel,
                 "pasos": resultado.get("pasos_completados", []),
                 "tipo_fondo": tipo_fondo,
                 "tipo_tratamiento": tipo_tratamiento,

@@ -719,6 +719,7 @@ async function mejorarFoto() {
         return;
     }
 
+    const nivel = document.getElementById('foto-nivel').value;
     const tipoTratamiento = document.getElementById('foto-tipo-tratamiento').value;
     const tipoFondo = document.getElementById('foto-fondo').value;
     const quitarFondo = document.getElementById('foto-quitar-fondo').checked;
@@ -726,13 +727,21 @@ async function mejorarFoto() {
     const resultDiv = document.getElementById('result-foto');
     const btn = document.getElementById('btn-foto');
 
+    // Mensajes de progreso segun nivel
+    const mensajes = {
+        rapido: 'Aplicando fondo profesional...',
+        profesional: 'Corrigiendo luz, limpiando y mejorando...',
+        premium: 'Pipeline completo: limpieza, rostro, luz, fondo, retoque, calidad...',
+    };
+
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = skeletonLoader('Mejorando tu foto profesionalmente...');
+    resultDiv.innerHTML = skeletonLoader(mensajes[nivel] || 'Mejorando tu foto...');
     btn.disabled = true;
     btn.textContent = 'Procesando...';
 
     const formData = new FormData();
     formData.append('foto', fotoSeleccionada);
+    formData.append('nivel', nivel);
     formData.append('tipo_tratamiento', tipoTratamiento);
     formData.append('tipo_fondo', tipoFondo);
     formData.append('eliminar_fondo', quitarFondo.toString());
@@ -763,7 +772,10 @@ async function mejorarFoto() {
                 html += `</div>`;
                 html += `</div>`;
 
-                html += `<div class="foto-info"><span>${r.total_pasos} mejoras aplicadas</span></div>`;
+                // Mostrar pasos completados
+                const nombresP = {limpiar:'Limpieza',rostro:'Rostro',iluminar:'Luz',fondo:'Fondo',retocar:'Retoque',calidad:'Calidad'};
+                const pasosTexto = (r.pasos_completados||[]).map(p => nombresP[p]||p).join(' > ');
+                html += `<div class="foto-info"><span>${r.total_pasos} pasos: ${pasosTexto}</span></div>`;
 
                 html += `<div class="foto-actions">`;
                 html += `<button class="btn btn-primary" onclick="descargarImagen('${finalProxy}', 'esteticai_foto_mejorada')">Descargar imagen</button>`;
