@@ -261,13 +261,15 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     # CSP: permitir recursos propios, inline scripts (necesarios para onclick handlers),
-    # imágenes desde fal.ai y data: URIs, y conectar a Stripe
+    # imágenes y videos desde fal.ai/fal.media, data: URIs, y conectar a Stripe.
+    # NOTA: fal.ai devuelve URLs en dominio fal.media (ej: v3b.fal.media/files/...)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://js.stripe.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "img-src 'self' data: https://*.fal.ai https://*.amazonaws.com blob:; "
-        "connect-src 'self' https://api.stripe.com; "
+        "img-src 'self' data: https://*.fal.ai https://*.fal.media https://*.amazonaws.com blob:; "
+        "media-src 'self' https://*.fal.ai https://*.fal.media blob:; "
+        "connect-src 'self' https://api.stripe.com https://*.fal.media https://*.fal.ai; "
         "frame-src https://js.stripe.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "base-uri 'self'; "
