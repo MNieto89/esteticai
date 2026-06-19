@@ -2084,59 +2084,71 @@ async def api_media_proxy(request: Request, url: str = ""):
 
     import httpx
 
+    # IMPORTANTE: NO usar "async with" para el client porque el StreamingResponse
+    # itera el generador DESPUES de que la funcion retorne. Si usamos "async with",
+    # el client se cierra antes de que el streaming termine -> ReadError.
+    client = httpx.AsyncClient(timeout=_PROXY_TIMEOUT, follow_redirects=True)
+
     try:
-        async with httpx.AsyncClient(timeout=_PROXY_TIMEOUT, follow_redirects=True) as client:
-            resp = await client.send(
-                client.build_request("GET", url),
-                stream=True,
+        resp = await client.send(
+            client.build_request("GET", url),
+            stream=True,
+        )
+
+        if resp.status_code != 200:
+            await resp.aclose()
+            await client.aclose()
+            return JSONResponse(
+                {"error": f"El archivo no esta disponible (HTTP {resp.status_code})"},
+                status_code=502
             )
 
-            if resp.status_code != 200:
-                await resp.aclose()
-                return JSONResponse(
-                    {"error": f"El archivo no esta disponible (HTTP {resp.status_code})"},
-                    status_code=502
-                )
+        # Verificar tamano si el header lo indica
+        content_length = resp.headers.get("content-length")
+        if content_length and int(content_length) > _PROXY_MAX_SIZE:
+            await resp.aclose()
+            await client.aclose()
+            return JSONResponse(
+                {"error": "Archivo demasiado grande"},
+                status_code=413
+            )
 
-            # Verificar tamano si el header lo indica
-            content_length = resp.headers.get("content-length")
-            if content_length and int(content_length) > _PROXY_MAX_SIZE:
-                await resp.aclose()
-                return JSONResponse(
-                    {"error": "Archivo demasiado grande"},
-                    status_code=413
-                )
+        # Determinar content-type
+        content_type = resp.headers.get("content-type", "application/octet-stream")
 
-            # Determinar content-type
-            content_type = resp.headers.get("content-type", "application/octet-stream")
-
-            # Streaming: leemos chunks y los reenviamos
-            async def stream_chunks():
+        # Streaming: leemos chunks y los reenviamos
+        # El cleanup del client y response va en finally para garantizar cierre
+        async def stream_chunks():
+            try:
                 total = 0
                 async for chunk in resp.aiter_bytes(chunk_size=65536):
                     total += len(chunk)
                     if total > _PROXY_MAX_SIZE:
                         break
                     yield chunk
+            finally:
                 await resp.aclose()
+                await client.aclose()
 
-            headers = {
-                "Cache-Control": "public, max-age=3600",
-                "X-Content-Type-Options": "nosniff",
-            }
-            if content_length:
-                headers["Content-Length"] = content_length
+        headers = {
+            "Cache-Control": "public, max-age=3600",
+            "X-Content-Type-Options": "nosniff",
+        }
+        if content_length:
+            headers["Content-Length"] = content_length
 
-            return StreamingResponse(
-                stream_chunks(),
-                media_type=content_type,
-                headers=headers,
-            )
+        return StreamingResponse(
+            stream_chunks(),
+            media_type=content_type,
+            headers=headers,
+        )
 
     except httpx.TimeoutException:
+        await client.aclose()
         logger.warning("Proxy: timeout descargando %s", url[:100])
         return JSONResponse({"error": "Timeout descargando el archivo"}, status_code=504)
     except Exception as e:
+        await client.aclose()
         logger.error("Proxy: error descargando %s: %s", url[:100], e)
         return JSONResponse({"error": "No se pudo obtener el archivo"}, status_code=502)
 
