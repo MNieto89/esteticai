@@ -96,14 +96,18 @@
             <p>Imagen profesional generada con IA para tus publicaciones</p>
             <div class="gen-form" id="form-imagen" style="display:none;">
                 <select id="img-servicio">
+                    <optgroup label="Servicios">
                     {% for s in perfil.servicios %}
-                    <option value="{{ s }}">{{ s }}</option>
+                    <option value="{{ s }}" data-modo="servicio">{{ s }}</option>
                     {% endfor %}
+                    </optgroup>
+                    <optgroup label="Productos">
                     {% for p in perfil.productos %}
-                    <option value="{{ p }}">{{ p }}</option>
+                    <option value="{{ p }}" data-modo="producto">{{ p }}</option>
                     {% endfor %}
+                    </optgroup>
                 </select>
-                <select id="img-tipo">
+                <select id="img-tipo" onchange="toggleDescripcionProducto()">
                     <option value="post_feed">Post para feed</option>
                     <option value="story">Story</option>
                     <option value="reel_portada">Portada de Reel</option>
@@ -111,6 +115,12 @@
                     <option value="antes_despues">Antes y despues</option>
                     <option value="producto">Foto de producto</option>
                 </select>
+                <div id="producto-desc-container" style="display:none;">
+                    <textarea id="img-descripcion-producto" rows="3"
+                        placeholder="Describe el envase: forma, color, material, tapa... Ejemplo: Bote cilindrico de vidrio transparente, pump plateado, etiqueta blanca minimalista"
+                    ></textarea>
+                    <small style="color:var(--text-secondary);font-size:11px;">Opcional: cuanto mas detalle, mas realista sera la imagen del producto</small>
+                </div>
                 <button class="btn btn-primary" onclick="generarImagen()">Generar</button>
             </div>
             <div class="gen-result" id="result-imagen" style="display:none;"></div>

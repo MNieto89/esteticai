@@ -1,5 +1,5 @@
 anthropic
-fal-client
+fal-client>=0.4.0,<1.0
 requests
 fastapi
 uvicorn[standard]
@@ -10,4 +10,5 @@ bcrypt
 Pillow
 reportlab
 httpx
+psycopg2-binary
 pytest

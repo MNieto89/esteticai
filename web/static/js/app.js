@@ -416,21 +416,50 @@ async function generarCopy() {
 // GENERAR IMAGEN
 // ============================================================
 
+function toggleDescripcionProducto() {
+    const tipo = document.getElementById('img-tipo').value;
+    const container = document.getElementById('producto-desc-container');
+    if (container) {
+        container.style.display = (tipo === 'producto') ? 'block' : 'none';
+    }
+}
+
+function detectarModoImagen() {
+    const select = document.getElementById('img-servicio');
+    const tipo = document.getElementById('img-tipo').value;
+    const selected = select.options[select.selectedIndex];
+
+    // Si el tipo de publicacion es "producto", usar modo producto
+    if (tipo === 'producto') return 'producto';
+
+    // Si el item seleccionado viene del grupo "Productos", usar modo producto
+    if (selected && selected.getAttribute('data-modo') === 'producto') return 'producto';
+
+    return 'servicio';
+}
+
 async function generarImagen() {
     const btn = document.querySelector('#form-imagen .btn-primary');
     if (!bloquearBoton('imagen', btn)) return;
 
     const servicio = document.getElementById('img-servicio').value;
     const tipo = document.getElementById('img-tipo').value;
+    const modo = detectarModoImagen();
+    const descEl = document.getElementById('img-descripcion-producto');
+    const descripcionProducto = (descEl && descEl.value.trim()) ? descEl.value.trim() : '';
     const resultDiv = document.getElementById('result-imagen');
 
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = skeletonLoader('Generando imagen profesional con IA...');
+    const loadMsg = modo === 'producto'
+        ? 'Generando fotografia de producto con IA...'
+        : 'Generando imagen profesional con IA...';
+    resultDiv.innerHTML = skeletonLoader(loadMsg);
 
     try {
-        const data = await apiCall('/api/generar/imagen', {
-            servicio, tipo_publicacion: tipo, modo: 'servicio'
-        });
+        const payload = { servicio, tipo_publicacion: tipo, modo };
+        if (descripcionProducto) payload.descripcion_producto = descripcionProducto;
+
+        const data = await apiCall('/api/generar/imagen', payload);
         if (data.ok && data.imagen) {
             const img = data.imagen;
             const tieneUrl = img.url && (img.url.startsWith('http') || img.url.startsWith('data:'));
@@ -462,9 +491,18 @@ async function generarImagen() {
                 }
                 resultDiv.innerHTML = html;
             } else {
-                resultDiv.innerHTML = `<div class="demo-aviso">
-                    <strong>Modo demo</strong> &mdash; La generaci&oacute;n de im&aacute;genes requiere una API key de fal.ai.
-                </div>`;
+                // Sin URL valida: mostrar aviso pero con info util
+                let avisoHtml = `<div class="demo-aviso">
+                    <strong>Modo demo</strong> &mdash; `;
+                if (img.error) {
+                    avisoHtml += `Error de la API: ${escapeHtml(img.error)}`;
+                } else if (img.nota) {
+                    avisoHtml += escapeHtml(img.nota);
+                } else {
+                    avisoHtml += `La generaci&oacute;n de im&aacute;genes requiere una API key de fal.ai.`;
+                }
+                avisoHtml += `</div>`;
+                resultDiv.innerHTML = avisoHtml;
             }
         } else {
             resultDiv.innerHTML = `<div class="error-msg">No se pudo generar la imagen. ${escapeHtml(data.error || '')}</div>`;

@@ -81,7 +81,8 @@ from web.email_service import (
     enviar_bienvenida, enviar_cuenta_eliminada,
 )
 
-import sqlite3
+import sqlite3  # Solo para backup cron SQLite
+from web.db_compat import get_db, db_connection, init_db, DB_PATH, USE_POSTGRES
 
 # ============================================================
 # CONFIGURACION
@@ -90,12 +91,7 @@ import sqlite3
 BASE_DIR = Path(__file__).parent
 # Detectar produccion: Railway O Render
 IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER"))
-# En produccion, usar volumen persistente /data para la DB (solo si existe)
-if IS_PRODUCTION and Path("/data").exists():
-    DB_PATH = Path("/data/esteticai.db")
-else:
-    DB_PATH = BASE_DIR / "esteticai.db"
-SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+SECRET_KEY = os.environ.get("SESSION_SECRET") or os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 app = FastAPI(title="Esteticai", version="1.0")
 
@@ -108,13 +104,13 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Esteticai shutting down gracefully")
-    # Cerrar cualquier conexión DB pendiente si existe
-    try:
-        db = get_db()
-        db.execute("PRAGMA optimize")  # Optimizar estadísticas antes de cerrar
-        db.close()
-    except Exception:
-        pass
+    if not USE_POSTGRES:
+        try:
+            db = get_db()
+            db.execute("PRAGMA optimize")
+            db.close()
+        except Exception:
+            pass
 
 
 # Compresión Gzip (reduce tamaño de HTML, CSS, JS ~70%)
@@ -480,7 +476,7 @@ async def health():
     db_usuarios = 0
     try:
         db = get_db()
-        db_usuarios = db.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
+        db_usuarios = db.execute("SELECT COUNT(*) as c FROM usuarios").fetchone()["c"]
         db.close()
         db_ok = True
     except Exception:
@@ -536,7 +532,7 @@ async def health():
         "environment": "production" if IS_PRODUCTION else "development",
         "render_env": os.environ.get("RENDER", "NOT SET"),
         "is_production": IS_PRODUCTION,
-        "db_path": str(DB_PATH),
+        "db_path": str(DB_PATH) if DB_PATH else "PostgreSQL (externo)",
         "anthropic_key": anthropic_status,
         "fal_key": fal_status,
         "anthropic_sdk_version": sdk_version,
@@ -596,144 +592,8 @@ async def service_worker():
 
 
 # ============================================================
-# BASE DE DATOS
+# BASE DE DATOS (logica en web/db_compat.py)
 # ============================================================
-
-def get_db():
-    db = sqlite3.connect(str(DB_PATH))
-    db.row_factory = sqlite3.Row
-    # Optimizaciones SQLite para producción
-    db.execute("PRAGMA journal_mode=WAL")         # Write-Ahead Logging: lecturas concurrentes
-    db.execute("PRAGMA busy_timeout=5000")         # Esperar 5s si la DB está ocupada
-    db.execute("PRAGMA synchronous=NORMAL")        # Balance seguridad/velocidad (WAL lo permite)
-    db.execute("PRAGMA cache_size=-8000")           # 8MB de cache en memoria
-    db.execute("PRAGMA foreign_keys=ON")            # Activar restricciones de FK
-    return db
-
-
-from contextlib import contextmanager
-
-@contextmanager
-def db_connection():
-    """Context manager para conexiones DB. Usa: with db_connection() as db: ..."""
-    db = get_db()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
-
-
-def init_db():
-    db = get_db()
-    db.executescript("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            nombre TEXT NOT NULL,
-            creado_en TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS perfiles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            nombre_negocio TEXT NOT NULL,
-            propietaria TEXT,
-            ciudad TEXT,
-            tipo_negocio TEXT DEFAULT 'Centro de estetica',
-            servicios TEXT DEFAULT '[]',
-            productos TEXT DEFAULT '[]',
-            tono TEXT DEFAULT 'cercano',
-            instagram_handle TEXT DEFAULT '',
-            valores TEXT DEFAULT '[]',
-            publico TEXT DEFAULT '',
-            redes TEXT DEFAULT '["Instagram"]',
-            mejores_horarios TEXT DEFAULT '{}',
-            creado_en TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS password_resets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            token TEXT UNIQUE NOT NULL,
-            usado INTEGER DEFAULT 0,
-            creado_en TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS uso_mensual (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            anio INTEGER NOT NULL,
-            mes INTEGER NOT NULL,
-            copys INTEGER DEFAULT 0,
-            imagenes INTEGER DEFAULT 0,
-            videos INTEGER DEFAULT 0,
-            fotos INTEGER DEFAULT 0,
-            composiciones INTEGER DEFAULT 0,
-            calendarios INTEGER DEFAULT 0,
-            UNIQUE(usuario_id, anio, mes),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS email_verificaciones (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            token TEXT UNIQUE NOT NULL,
-            usado INTEGER DEFAULT 0,
-            creado_en TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS generaciones (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            perfil_id INTEGER,
-            tipo TEXT NOT NULL,
-            contenido TEXT,
-            imagen_url TEXT,
-            video_url TEXT,
-            metadata TEXT DEFAULT '{}',
-            creado_en TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-        );
-    """)
-    # Migraciones: anadir columnas si no existen (para DBs creadas antes)
-    try:
-        db.execute("SELECT valores FROM perfiles LIMIT 1")
-    except sqlite3.OperationalError:
-        db.execute("ALTER TABLE perfiles ADD COLUMN valores TEXT DEFAULT '[]'")
-        db.execute("ALTER TABLE perfiles ADD COLUMN publico TEXT DEFAULT ''")
-        db.execute("ALTER TABLE perfiles ADD COLUMN redes TEXT DEFAULT '[\"Instagram\"]'")
-        db.execute("ALTER TABLE perfiles ADD COLUMN mejores_horarios TEXT DEFAULT '{}'")
-    # Migracion: plan y trial en usuarios
-    try:
-        db.execute("SELECT plan FROM usuarios LIMIT 1")
-    except sqlite3.OperationalError:
-        db.execute("ALTER TABLE usuarios ADD COLUMN plan TEXT DEFAULT 'trial'")
-        db.execute("ALTER TABLE usuarios ADD COLUMN trial_ends_at TEXT DEFAULT ''")
-        db.execute("ALTER TABLE usuarios ADD COLUMN stripe_customer_id TEXT DEFAULT ''")
-        db.execute("ALTER TABLE usuarios ADD COLUMN stripe_subscription_id TEXT DEFAULT ''")
-    # Migracion: email_verificado en usuarios
-    try:
-        db.execute("SELECT email_verificado FROM usuarios LIMIT 1")
-    except sqlite3.OperationalError:
-        db.execute("ALTER TABLE usuarios ADD COLUMN email_verificado INTEGER DEFAULT 0")
-    # Índices para rendimiento en consultas frecuentes
-    db.executescript("""
-        CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
-        CREATE INDEX IF NOT EXISTS idx_generaciones_usuario ON generaciones(usuario_id, creado_en DESC);
-        CREATE INDEX IF NOT EXISTS idx_uso_mensual_lookup ON uso_mensual(usuario_id, anio, mes);
-        CREATE INDEX IF NOT EXISTS idx_perfiles_usuario ON perfiles(usuario_id);
-        CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token, usado);
-        CREATE INDEX IF NOT EXISTS idx_email_verif_token ON email_verificaciones(token, usado);
-    """)
-    db.commit()
-    db.close()
-
 
 init_db()
 
@@ -1405,8 +1265,8 @@ async def dashboard(request: Request):
 
     db = get_db()
     total_gen = db.execute(
-        "SELECT COUNT(*) FROM generaciones WHERE usuario_id = ?", (user["id"],)
-    ).fetchone()[0]
+        "SELECT COUNT(*) as c FROM generaciones WHERE usuario_id = ?", (user["id"],)
+    ).fetchone()["c"]
 
     total_paginas = max(1, (total_gen + HISTORIAL_POR_PAGINA - 1) // HISTORIAL_POR_PAGINA)
     pagina = min(pagina, total_paginas)
@@ -1463,11 +1323,21 @@ def _parsear_form_perfil(form):
         tono = "cercano"
 
     # Listas con límite de items y longitud por item
-    servicios_raw = form.get("servicios", "").split("\n")
+    # Acepta separacion por salto de linea O por coma
+    def _split_lista(texto):
+        """Separa por saltos de linea o por comas (lo que use la clienta)."""
+        if "\n" in texto and any(line.strip() for line in texto.split("\n") if "," not in line):
+            return [item.strip() for item in texto.split("\n")]
+        elif "," in texto:
+            return [item.strip() for item in texto.split(",")]
+        else:
+            return [item.strip() for item in texto.split("\n")]
+
+    servicios_raw = _split_lista(form.get("servicios", ""))
     servicios = [sanitizar_texto(s, 100) for s in servicios_raw if s.strip()][:30]
-    productos_raw = form.get("productos", "").split("\n")
+    productos_raw = _split_lista(form.get("productos", ""))
     productos = [sanitizar_texto(p, 100) for p in productos_raw if p.strip()][:30]
-    valores_raw = form.get("valores", "").split("\n")
+    valores_raw = _split_lista(form.get("valores", ""))
     valores = [sanitizar_texto(v, 100) for v in valores_raw if v.strip()][:15]
 
     # Redes: validar contra whitelist
@@ -1888,6 +1758,45 @@ async def cambiar_password(request: Request,
 
 
 # ============================================================
+# API - DIAGNOSTICO (para depurar problemas de configuracion)
+# ============================================================
+
+@app.get("/api/diagnostico")
+async def api_diagnostico(request: Request):
+    """Endpoint de diagnostico -- muestra estado de las APIs sin revelar keys."""
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+
+    fal_key = os.environ.get("FAL_KEY", "")
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+
+    try:
+        import fal_client
+        fal_importable = True
+        fal_version = getattr(fal_client, "__version__", "desconocida")
+    except ImportError:
+        fal_importable = False
+        fal_version = "no instalado"
+
+    try:
+        from anthropic import Anthropic
+        anthropic_importable = True
+    except ImportError:
+        anthropic_importable = False
+
+    return JSONResponse({
+        "fal_key_configurada": bool(fal_key),
+        "fal_key_longitud": len(fal_key) if fal_key else 0,
+        "fal_key_prefijo": fal_key[:8] + "..." if len(fal_key) > 8 else ("corta" if fal_key else "vacia"),
+        "fal_client_importable": fal_importable,
+        "fal_client_version": fal_version,
+        "anthropic_key_configurada": bool(anthropic_key),
+        "anthropic_importable": anthropic_importable,
+    })
+
+
+# ============================================================
 # API - GENERACION DE CONTENIDO
 # ============================================================
 
@@ -1952,6 +1861,12 @@ async def api_generar_imagen(request: Request):
     servicio = data.get("servicio", "Tratamiento facial")
     tipo_pub = data.get("tipo_publicacion", "post_feed")
     modo = data.get("modo", "servicio")
+    descripcion_producto = data.get("descripcion_producto", "")
+
+    # Si hay descripcion de producto, inyectarla en el perfil temporalmente
+    if descripcion_producto:
+        perfil = dict(perfil)  # Copiar para no mutar el original
+        perfil["descripcion_producto"] = descripcion_producto
 
     try:
         resultado = generar_imagen_automatica(
@@ -1960,10 +1875,20 @@ async def api_generar_imagen(request: Request):
             perfil=perfil,
             modo=modo,
         )
-        if "error" not in resultado:
+        # Si el motor devuelve un error (ej: fallo de API), devolver como error real
+        if "error" in resultado:
+            error_msg = resultado["error"]
+            logger.error("Image engine error: %s", error_msg)
+            return JSONResponse({"error": f"Error al generar imagen: {error_msg}"}, status_code=500, headers=rl_info)
+        if not resultado.get("es_demo"):
             guardar_generacion(user["id"], perfil["id"], "imagen",
-                              imagen_url=resultado.get("url") if not resultado.get("es_demo") else None,
-                              metadata={"servicio": servicio, "tipo": tipo_pub, "es_demo": resultado.get("es_demo", False)})
+                              imagen_url=resultado.get("url"),
+                              metadata={"servicio": servicio, "tipo": tipo_pub, "es_demo": False})
+            incrementar_uso(user["id"], "imagen")
+        else:
+            guardar_generacion(user["id"], perfil["id"], "imagen",
+                              imagen_url=None,
+                              metadata={"servicio": servicio, "tipo": tipo_pub, "es_demo": True})
             incrementar_uso(user["id"], "imagen")
         return JSONResponse({"ok": True, "imagen": resultado}, headers=rl_info)
     except Exception as e:
@@ -2527,13 +2452,19 @@ async def cron_trial_reminder(request: Request):
 
 @app.get("/cron/backup")
 async def cron_backup(request: Request):
-    """Crea backup de la base de datos SQLite.
-    Protegido por CRON_SECRET. Retención: últimos 7 backups.
-    Llamar: GET /cron/backup?secret=<CRON_SECRET>
+    """Crea backup de la base de datos.
+    Con PostgreSQL (Neon), los backups son automaticos del proveedor.
+    Con SQLite, crea copia local. Protegido por CRON_SECRET.
     """
     token = request.query_params.get("secret", "")
     if not CRON_SECRET or token != CRON_SECRET:
         raise HTTPException(status_code=404)
+
+    if USE_POSTGRES:
+        return JSONResponse({
+            "ok": True,
+            "message": "PostgreSQL: backups gestionados por el proveedor (Neon)",
+        })
 
     import shutil
     import glob as _glob
@@ -2545,14 +2476,12 @@ async def cron_backup(request: Request):
     backup_path = backup_dir / f"esteticai_{timestamp}.db"
 
     try:
-        # Usar backup API de SQLite para copia consistente
         src_db = sqlite3.connect(str(DB_PATH))
         dst_db = sqlite3.connect(str(backup_path))
         src_db.backup(dst_db)
         dst_db.close()
         src_db.close()
 
-        # Retención: mantener solo los últimos 7 backups
         backups = sorted(backup_dir.glob("esteticai_*.db"))
         while len(backups) > 7:
             oldest = backups.pop(0)
