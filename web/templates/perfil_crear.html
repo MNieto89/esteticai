@@ -49,25 +49,51 @@
             </div>
 
             <div class="form-section">
-                <h3 class="form-section-title">Servicios y productos</h3>
+                <h3 class="form-section-title">Tratamientos que ofreces *</h3>
+                <p class="setup-desc" style="margin-bottom:12px;">Selecciona los tratamientos de tu centro. Pulsa en cada categor&iacute;a para ver las opciones.</p>
 
-                <div class="form-group">
-                    <label for="servicios">Servicios que ofreces (uno por l&iacute;nea) *</label>
-                    <textarea id="servicios" name="servicios" rows="5" required
-                              placeholder="Limpieza facial profunda
-Tratamiento antimanchas
-Radiofrecuencia facial
-Depilaci&oacute;n l&aacute;ser">{% if perfil and perfil.servicios %}{% for s in perfil.servicios %}{{ s }}{% if not loop.last %}
-{% endif %}{% endfor %}{% endif %}</textarea>
-                </div>
-                <div class="form-group">
-                    <label for="productos">Productos que vendes (uno por l&iacute;nea)</label>
-                    <textarea id="productos" name="productos" rows="3"
-                              placeholder="Serum vitamina C
-Crema hidratante facial
-Protector solar SPF 50">{% if perfil and perfil.productos %}{% for p in perfil.productos %}{{ p }}{% if not loop.last %}
-{% endif %}{% endfor %}{% endif %}</textarea>
-                </div>
+                {% for grupo in catalogo_tratamientos %}
+                <details class="catalogo-grupo">
+                    <summary class="catalogo-titulo">
+                        {{ grupo.grupo }}
+                        <span class="catalogo-count" id="count-{{ grupo.cat_id }}">0</span>
+                    </summary>
+                    <div class="catalogo-items">
+                        {% for op in grupo.opciones %}
+                        <label class="catalogo-check">
+                            <input type="checkbox" name="servicios" value="{{ op.texto }}"
+                                   onchange="actualizarContador('{{ grupo.cat_id }}')"
+                                   {% if perfil and perfil.servicios and op.texto in perfil.servicios %}checked{% endif %}>
+                            <span>{{ op.texto }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section-title">Productos que vendes</h3>
+                <p class="setup-desc" style="margin-bottom:12px;">Opcional: si vendes productos cosm&eacute;ticos, sel&eacute;ccionalos aqu&iacute;.</p>
+
+                {% for grupo in catalogo_productos %}
+                <details class="catalogo-grupo">
+                    <summary class="catalogo-titulo">
+                        {{ grupo.grupo }}
+                        <span class="catalogo-count" id="count-prod-{{ grupo.cat_id }}">0</span>
+                    </summary>
+                    <div class="catalogo-items">
+                        {% for op in grupo.opciones %}
+                        <label class="catalogo-check">
+                            <input type="checkbox" name="productos" value="{{ op.texto }}"
+                                   onchange="actualizarContador('prod-{{ grupo.cat_id }}')"
+                                   {% if perfil and perfil.productos and op.texto in perfil.productos %}checked{% endif %}>
+                            <span>{{ op.texto }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
             </div>
 
             <div class="form-section">
@@ -200,4 +226,28 @@ Trato personalizado">{% if perfil and perfil.valores %}{% for v in perfil.valore
         {% endif %}
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+function actualizarContador(grupoId) {
+    var container = document.getElementById('count-' + grupoId);
+    if (!container) return;
+    var details = container.closest('details');
+    if (!details) return;
+    var checks = details.querySelectorAll('input[type="checkbox"]:checked');
+    container.textContent = checks.length;
+    if (checks.length > 0) {
+        container.classList.add('has-selected');
+    } else {
+        container.classList.remove('has-selected');
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    var allCounts = document.querySelectorAll('.catalogo-count');
+    for (var i = 0; i < allCounts.length; i++) {
+        var id = allCounts[i].id.replace('count-', '');
+        actualizarContador(id);
+    }
+});
+</script>
 {% endblock %}

@@ -76,6 +76,10 @@ from agents.image_engine import generar_imagen_automatica, generar_prompt_automa
 from agents.video_engine import generar_video_desde_imagen, MOVIMIENTOS_VIDEO, MOVIMIENTO_RECOMENDADO
 from agents.photo_engine import procesar_foto_tratamiento, subir_imagen_a_fal, FONDOS_PROFESIONALES, obtener_fondos_disponibles
 from agents.composer_engine import componer_antes_despues, obtener_plantillas_disponibles, PLANTILLA_INFO
+from agents.catalogo_estetica import (
+    obtener_todo_para_select, obtener_tratamientos_para_select,
+    obtener_productos_para_select, buscar_item,
+)
 from web.email_service import (
     enviar_reset_password, enviar_verificacion_email,
     enviar_bienvenida, enviar_cuenta_eliminada,
@@ -1280,6 +1284,9 @@ async def dashboard(request: Request):
 
     plan_info = get_info_plan_usuario(user)
 
+    catalogo_select = obtener_todo_para_select()
+    catalogo_tratamientos = obtener_tratamientos_para_select()
+
     return templates.TemplateResponse(request, "dashboard.html", context={
         "user": user,
         "perfil": perfil,
@@ -1288,6 +1295,8 @@ async def dashboard(request: Request):
         "pagina": pagina,
         "total_paginas": total_paginas,
         "total_generaciones": total_gen,
+        "catalogo": catalogo_select,
+        "catalogo_tratamientos": catalogo_tratamientos,
     })
 
 
@@ -1323,7 +1332,7 @@ def _parsear_form_perfil(form):
         tono = "cercano"
 
     # Listas con límite de items y longitud por item
-    # Acepta separacion por salto de linea O por coma
+    # Acepta checkboxes (getlist) O textarea (split por linea/coma)
     def _split_lista(texto):
         """Separa por saltos de linea o por comas (lo que use la clienta)."""
         if "\n" in texto and any(line.strip() for line in texto.split("\n") if "," not in line):
@@ -1333,10 +1342,23 @@ def _parsear_form_perfil(form):
         else:
             return [item.strip() for item in texto.split("\n")]
 
-    servicios_raw = _split_lista(form.get("servicios", ""))
-    servicios = [sanitizar_texto(s, 100) for s in servicios_raw if s.strip()][:30]
-    productos_raw = _split_lista(form.get("productos", ""))
-    productos = [sanitizar_texto(p, 100) for p in productos_raw if p.strip()][:30]
+    # Servicios: acepta checkboxes (multiples valores) o textarea
+    servicios_list = form.getlist("servicios")
+    if servicios_list and len(servicios_list) > 1:
+        # Viene de checkboxes
+        servicios = [sanitizar_texto(s, 100) for s in servicios_list if s.strip()][:50]
+    else:
+        servicios_raw = _split_lista(form.get("servicios", ""))
+        servicios = [sanitizar_texto(s, 100) for s in servicios_raw if s.strip()][:30]
+
+    # Productos: acepta checkboxes o textarea
+    productos_list = form.getlist("productos")
+    if productos_list and len(productos_list) > 1:
+        productos = [sanitizar_texto(p, 100) for p in productos_list if p.strip()][:50]
+    else:
+        productos_raw = _split_lista(form.get("productos", ""))
+        productos = [sanitizar_texto(p, 100) for p in productos_raw if p.strip()][:30]
+
     valores_raw = _split_lista(form.get("valores", ""))
     valores = [sanitizar_texto(v, 100) for v in valores_raw if v.strip()][:15]
 
@@ -1373,8 +1395,12 @@ async def perfil_crear_page(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
+    catalogo_trat = obtener_tratamientos_para_select()
+    catalogo_prod = obtener_productos_para_select()
     return templates.TemplateResponse(request, "perfil_crear.html", context={
         "user": user, "perfil": None, "modo": "crear",
+        "catalogo_tratamientos": catalogo_trat,
+        "catalogo_productos": catalogo_prod,
     })
 
 
@@ -1385,17 +1411,23 @@ async def perfil_crear_submit(request: Request, _csrf=Depends(validar_csrf)):
         return RedirectResponse("/login", status_code=303)
     form = await request.form()
     datos = _parsear_form_perfil(form)
+    catalogo_trat = obtener_tratamientos_para_select()
+    catalogo_prod = obtener_productos_para_select()
     # Validar campos obligatorios
     if not datos["nombre_negocio"]:
         return templates.TemplateResponse(request, "perfil_crear.html", context={
             "user": user, "perfil": None, "modo": "crear",
+            "catalogo_tratamientos": catalogo_trat,
+            "catalogo_productos": catalogo_prod,
             "error": "El nombre del negocio es obligatorio."
         })
     servicios_list = json.loads(datos["servicios"])
     if not servicios_list:
         return templates.TemplateResponse(request, "perfil_crear.html", context={
             "user": user, "perfil": None, "modo": "crear",
-            "error": "A\u00f1ade al menos un servicio."
+            "catalogo_tratamientos": catalogo_trat,
+            "catalogo_productos": catalogo_prod,
+            "error": "Selecciona al menos un servicio."
         })
     db = get_db()
     db.execute(
@@ -1423,8 +1455,12 @@ async def perfil_editar_page(request: Request):
     perfil = get_perfil_activo(user["id"])
     if not perfil:
         return RedirectResponse("/perfil/crear", status_code=303)
+    catalogo_trat = obtener_tratamientos_para_select()
+    catalogo_prod = obtener_productos_para_select()
     return templates.TemplateResponse(request, "perfil_crear.html", context={
         "user": user, "perfil": perfil, "modo": "editar",
+        "catalogo_tratamientos": catalogo_trat,
+        "catalogo_productos": catalogo_prod,
     })
 
 
