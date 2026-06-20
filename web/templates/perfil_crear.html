@@ -21,14 +21,14 @@
                            value="{{ perfil.nombre_negocio if perfil else '' }}">
                 </div>
                 <div class="form-group">
-                    <label for="propietaria">Tu nombre</label>
+                    <label for="propietaria">Tu nombre <span class="form-optional">(opcional)</span></label>
                     <input type="text" id="propietaria" name="propietaria"
                            placeholder="Ej: Laura Mart&iacute;nez"
                            value="{{ perfil.propietaria if perfil else '' }}">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="ciudad">Ciudad</label>
+                        <label for="ciudad">Ciudad <span class="form-optional">(opcional)</span></label>
                         <input type="text" id="ciudad" name="ciudad" placeholder="Ej: Madrid"
                                value="{{ perfil.ciudad if perfil else '' }}">
                     </div>
@@ -110,19 +110,19 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="valores">Valores de tu marca (uno por l&iacute;nea)</label>
+                    <label for="valores">Valores de tu marca <span class="form-optional">(opcional)</span></label>
                     <textarea id="valores" name="valores" rows="3"
                               placeholder="Naturalidad
 Resultados visibles
 Trato personalizado">{% if perfil and perfil.valores %}{% for v in perfil.valores %}{{ v }}{% if not loop.last %}
 {% endif %}{% endfor %}{% endif %}</textarea>
-                    <span class="form-hint">Qu&eacute; hace especial a tu negocio. Esto aparecer&aacute; en tus publicaciones.</span>
+                    <span class="form-hint">Qu&eacute; hace especial a tu negocio. Uno por l&iacute;nea. Esto aparecer&aacute; en tus publicaciones.</span>
                 </div>
                 <div class="form-group">
-                    <label for="publico">Describe tu clienta ideal</label>
+                    <label for="publico">Describe tu clienta ideal <span class="form-optional">(opcional)</span></label>
                     <textarea id="publico" name="publico" rows="2"
                               placeholder="Ej: Mujeres de 30-55 a&ntilde;os que buscan cuidar su piel con tratamientos profesionales">{% if perfil %}{{ perfil.publico }}{% endif %}</textarea>
-                    <span class="form-hint">Cuanto m&aacute;s concreta, mejor ser&aacute; el contenido.</span>
+                    <span class="form-hint">Cuanto m&aacute;s concreta, mejor ser&aacute; el contenido. Si la dejas en blanco, usaremos un valor por defecto.</span>
                 </div>
             </div>
 
@@ -151,7 +151,7 @@ Trato personalizado">{% if perfil and perfil.valores %}{% for v in perfil.valore
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="instagram_handle">Usuario de Instagram</label>
+                    <label for="instagram_handle">Usuario de Instagram <span class="form-optional">(opcional)</span></label>
                     <input type="text" id="instagram_handle" name="instagram_handle"
                            placeholder="@tunegocio"
                            value="{{ perfil.instagram_handle if perfil else '' }}">

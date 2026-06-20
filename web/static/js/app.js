@@ -290,12 +290,31 @@ function crearToastContainer() {
 // ============================================================
 
 async function apiCall(url, data) {
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    const json = await res.json();
+    var res;
+    try {
+        res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+    } catch (e) {
+        mostrarToast('Error de conexion. Comprueba tu internet e intentalo de nuevo.', 'error', 5000);
+        return { error: 'Error de conexion' };
+    }
+
+    var json;
+    try {
+        json = await res.json();
+    } catch (e) {
+        // El servidor devolvio algo que no es JSON (error HTML, crash, etc.)
+        if (res.status === 401 || res.status === 303) {
+            mostrarSesionExpirada();
+            return { error: 'Sesion expirada' };
+        }
+        mostrarToast('Error inesperado del servidor. Intentalo de nuevo.', 'error', 5000);
+        return { error: 'Respuesta no valida del servidor' };
+    }
+
     if (!res.ok && json.error) {
         if (res.status === 429) {
             mostrarToast(json.error, 'warning', 6000);

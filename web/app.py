@@ -866,6 +866,17 @@ def requiere_login(request: Request):
     return user
 
 
+def _safe_json_loads(valor, default):
+    """Parsea JSON de forma segura. Si falla, devuelve el default."""
+    if not valor:
+        return default
+    try:
+        result = json.loads(valor)
+        return result if isinstance(result, type(default)) else default
+    except (json.JSONDecodeError, TypeError):
+        return default
+
+
 def get_perfil_activo(user_id):
     db = get_db()
     perfil = db.execute(
@@ -876,18 +887,18 @@ def get_perfil_activo(user_id):
     if perfil:
         return {
             "id": perfil["id"],
-            "nombre_negocio": perfil["nombre_negocio"],
+            "nombre_negocio": perfil["nombre_negocio"] or "Mi negocio",
             "propietaria": perfil["propietaria"] or "",
             "ciudad": perfil["ciudad"] or "",
-            "tipo_negocio": perfil["tipo_negocio"],
-            "servicios": json.loads(perfil["servicios"]),
-            "productos": json.loads(perfil["productos"]),
-            "tono": perfil["tono"],
-            "instagram_handle": perfil["instagram_handle"],
-            "valores": json.loads(perfil["valores"] or "[]"),
+            "tipo_negocio": perfil["tipo_negocio"] or "Centro de estetica",
+            "servicios": _safe_json_loads(perfil["servicios"], []),
+            "productos": _safe_json_loads(perfil["productos"], []),
+            "tono": perfil["tono"] or "cercano",
+            "instagram_handle": perfil["instagram_handle"] or "",
+            "valores": _safe_json_loads(perfil["valores"], []),
             "publico": perfil["publico"] or "",
-            "redes": json.loads(perfil["redes"] or '["Instagram"]'),
-            "mejores_horarios": json.loads(perfil["mejores_horarios"] or "{}"),
+            "redes": _safe_json_loads(perfil["redes"], ["Instagram"]),
+            "mejores_horarios": _safe_json_loads(perfil["mejores_horarios"], {}),
         }
     return None
 
@@ -939,7 +950,14 @@ async def login_page(request: Request):
 
 
 @app.post("/login")
-async def login_submit(request: Request, email: str = Form(...), password: str = Form(...), _csrf=Depends(validar_csrf)):
+async def login_submit(request: Request, email: str = Form(""), password: str = Form(""), _csrf=Depends(validar_csrf)):
+    # Validar campos obligatorios
+    if not email or not password:
+        return templates.TemplateResponse(request, "login.html", context={
+            "error": "Introduce tu email y contrasena.",
+            "email_value": email,
+        })
+
     # Rate limiting por IP
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/login"):
@@ -983,8 +1001,15 @@ async def registro_page(request: Request):
 
 
 @app.post("/registro")
-async def registro_submit(request: Request, nombre: str = Form(...),
-                           email: str = Form(...), password: str = Form(...), _csrf=Depends(validar_csrf)):
+async def registro_submit(request: Request, nombre: str = Form(""),
+                           email: str = Form(""), password: str = Form(""), _csrf=Depends(validar_csrf)):
+    # Validar que llegaron los campos basicos
+    if not nombre or not email or not password:
+        return templates.TemplateResponse(request, "registro.html", context={
+            "error": "Todos los campos son obligatorios.",
+            "nombre_value": nombre, "email_value": email,
+        })
+
     # Rate limiting por IP
     client_ip = request.client.host if request.client else "unknown"
     if not check_ip_rate_limit(client_ip, "/registro"):
@@ -1474,6 +1499,24 @@ async def perfil_editar_submit(request: Request, _csrf=Depends(validar_csrf)):
         return RedirectResponse("/perfil/crear", status_code=303)
     form = await request.form()
     datos = _parsear_form_perfil(form)
+    catalogo_trat = obtener_tratamientos_para_select()
+    catalogo_prod = obtener_productos_para_select()
+    # Validar campos obligatorios
+    if not datos["nombre_negocio"]:
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "user": user, "perfil": perfil, "modo": "editar",
+            "catalogo_tratamientos": catalogo_trat,
+            "catalogo_productos": catalogo_prod,
+            "error": "El nombre del negocio es obligatorio."
+        })
+    servicios_list = json.loads(datos["servicios"])
+    if not servicios_list:
+        return templates.TemplateResponse(request, "perfil_crear.html", context={
+            "user": user, "perfil": perfil, "modo": "editar",
+            "catalogo_tratamientos": catalogo_trat,
+            "catalogo_productos": catalogo_prod,
+            "error": "Selecciona al menos un servicio."
+        })
     db = get_db()
     db.execute(
         """UPDATE perfiles SET nombre_negocio=?, propietaria=?, ciudad=?,
@@ -1725,54 +1768,43 @@ async def exportar_historial_csv(request: Request):
 
 @app.post("/cuenta/cambiar-password")
 async def cambiar_password(request: Request,
-                            password_actual: str = Form(...),
-                            password_nueva: str = Form(...),
-                            password_confirmar: str = Form(...),
+                            password_actual: str = Form(""),
+                            password_nueva: str = Form(""),
+                            password_confirmar: str = Form(""),
                             _csrf=Depends(validar_csrf)):
     user = get_usuario_actual(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
 
-    # Validar contraseña actual
-    if not verificar_password(password_actual, user["password_hash"]):
+    catalogo_trat = obtener_tratamientos_para_select()
+    catalogo_prod = obtener_productos_para_select()
+
+    def _render_password_error(msg):
         return templates.TemplateResponse(request, "perfil_crear.html", context={
             "modo": "editar",
             "perfil": get_perfil_activo(user["id"]),
             "user": user,
-            "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
-            "tonos": TONOS_VALIDOS,
-            "redes_disponibles": REDES_VALIDAS,
+            "catalogo_tratamientos": catalogo_trat,
+            "catalogo_productos": catalogo_prod,
             "error": None,
-            "password_error": "La contraseña actual es incorrecta.",
+            "password_error": msg,
             "password_success": None,
         })
 
-    # Validar nueva contraseña
+    # Validar que se rellenaron los campos
+    if not password_actual or not password_nueva or not password_confirmar:
+        return _render_password_error("Rellena todos los campos de contrasena.")
+
+    # Validar contrasena actual
+    if not verificar_password(password_actual, user["password_hash"]):
+        return _render_password_error("La contrasena actual es incorrecta.")
+
+    # Validar nueva contrasena
     if len(password_nueva) < 6:
-        return templates.TemplateResponse(request, "perfil_crear.html", context={
-            "modo": "editar",
-            "perfil": get_perfil_activo(user["id"]),
-            "user": user,
-            "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
-            "tonos": TONOS_VALIDOS,
-            "redes_disponibles": REDES_VALIDAS,
-            "error": None,
-            "password_error": "La nueva contraseña debe tener al menos 6 caracteres.",
-            "password_success": None,
-        })
+        return _render_password_error("La nueva contrasena debe tener al menos 6 caracteres.")
 
     if password_nueva != password_confirmar:
-        return templates.TemplateResponse(request, "perfil_crear.html", context={
-            "modo": "editar",
-            "perfil": get_perfil_activo(user["id"]),
-            "user": user,
-            "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
-            "tonos": TONOS_VALIDOS,
-            "redes_disponibles": REDES_VALIDAS,
-            "error": None,
-            "password_error": "Las contraseñas nuevas no coinciden.",
-            "password_success": None,
-        })
+        return _render_password_error("Las contrasenas nuevas no coinciden.")
 
     # Actualizar
     with db_connection() as db:
@@ -1784,12 +1816,11 @@ async def cambiar_password(request: Request,
         "modo": "editar",
         "perfil": get_perfil_activo(user["id"]),
         "user": user,
-        "tipos_negocio": TIPOS_NEGOCIO_VALIDOS,
-        "tonos": TONOS_VALIDOS,
-        "redes_disponibles": REDES_VALIDAS,
+        "catalogo_tratamientos": catalogo_trat,
+        "catalogo_productos": catalogo_prod,
         "error": None,
         "password_error": None,
-        "password_success": "Contraseña actualizada correctamente.",
+        "password_success": "Contrasena actualizada correctamente.",
     })
 
 
@@ -1851,9 +1882,17 @@ async def api_generar_copy(request: Request):
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
 
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Datos no validos"}, status_code=400)
+
     tipo = data.get("tipo", "EDUCATIVO")
-    servicio = data.get("servicio", perfil["servicios"][0] if perfil["servicios"] else "Tratamiento facial")
+    # Fallback seguro si servicios esta vacio
+    default_servicio = "Tratamiento facial"
+    if perfil.get("servicios") and len(perfil["servicios"]) > 0:
+        default_servicio = perfil["servicios"][0]
+    servicio = data.get("servicio", default_servicio) or default_servicio
     descripcion = data.get("descripcion", None)
 
     try:
@@ -1872,10 +1911,10 @@ async def api_generar_copy(request: Request):
         if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
             return JSONResponse({"error": "API key no configurada. Contacta al administrador."}, status_code=500)
         if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-            return JSONResponse({"error": "La generaci\u00f3n tard\u00f3 demasiado. Int\u00e9ntalo de nuevo."}, status_code=500)
+            return JSONResponse({"error": "La generacion tardo demasiado. Intentalo de nuevo."}, status_code=500)
         import traceback
         logger.error("Copy generation failed: %s\n%s", error_msg, traceback.format_exc())
-        return JSONResponse({"error": f"No se pudo generar el copy: {error_msg}"}, status_code=500)
+        return JSONResponse({"error": "No se pudo generar el copy. Intentalo de nuevo."}, status_code=500)
 
 
 @app.post("/api/generar/imagen")
@@ -1893,7 +1932,10 @@ async def api_generar_imagen(request: Request):
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
 
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Datos no validos"}, status_code=400)
     servicio = data.get("servicio", "Tratamiento facial")
     tipo_pub = data.get("tipo_publicacion", "post_feed")
     modo = data.get("modo", "servicio")
@@ -1944,7 +1986,10 @@ async def api_generar_video(request: Request):
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
 
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Datos no validos"}, status_code=400)
     url_imagen = data.get("url_imagen", "")
     tipo_movimiento = data.get("tipo_movimiento", "zoom_suave")
     duracion = data.get("duracion", 5)
@@ -2129,7 +2174,10 @@ async def api_generar_calendario(request: Request):
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
 
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Datos no validos"}, status_code=400)
     contexto = data.get("contexto", None)
 
     try:
@@ -2156,7 +2204,10 @@ async def api_calendario_pdf(request: Request):
     if not perfil:
         return JSONResponse({"error": "Crea un perfil primero"}, status_code=400)
 
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Datos no validos"}, status_code=400)
     cal = data.get("calendario", {})
     if not cal:
         return JSONResponse({"error": "No hay calendario para exportar"}, status_code=400)
@@ -2325,7 +2376,8 @@ async def api_mejorar_foto(
         incrementar_uso(user["id"], "foto")
         return JSONResponse({"ok": True, "resultado": resultado}, headers=rl_info)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.error("Photo improvement failed: %s", e)
+        return JSONResponse({"error": "No se pudo mejorar la foto. Intentalo de nuevo."}, status_code=500)
 
 
 @app.get("/api/fondos-disponibles")
@@ -2416,7 +2468,8 @@ async def api_componer_antes_despues(
         incrementar_uso(user["id"], "composicion")
         return JSONResponse({"ok": True, "resultado": respuesta}, headers=rl_info)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.error("Antes/despues composition failed: %s", e)
+        return JSONResponse({"error": "No se pudo crear la composicion. Intentalo de nuevo."}, status_code=500)
 
 
 @app.get("/api/plantillas-disponibles")
@@ -2441,7 +2494,7 @@ async def api_perfil(request: Request):
 @app.get("/api/opciones")
 async def api_opciones(request: Request):
     """Devuelve las opciones disponibles para los formularios."""
-    tipos_contenido = ["EDUCATIVO", "ANTES_DESPUES", "TESTIMONIO", "PRODUCTO",
+    tipos_contenido = ["EDUCATIVO", "TRATAMIENTO", "ANTES_DESPUES", "TESTIMONIO", "PRODUCTO",
                        "DETRAS_DE_CAMARAS", "TENDENCIA", "PROMOCION", "PERSONAL"]
     tipos_publicacion = list(ESTILOS_PUBLICACION.keys())
     movimientos = {k: v["descripcion"] for k, v in MOVIMIENTOS_VIDEO.items()}
@@ -2619,7 +2672,10 @@ async def api_crear_checkout(request: Request):
             "error": "El sistema de pagos a\u00fan no est\u00e1 configurado. Contacta con hola@esteticai.com para activar tu plan."
         }, status_code=503)
 
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Datos no validos"}, status_code=400)
     plan_elegido = data.get("plan", "")
     if plan_elegido not in STRIPE_PRICE_IDS or not STRIPE_PRICE_IDS[plan_elegido]:
         return JSONResponse({"error": "Plan no v\u00e1lido"}, status_code=400)

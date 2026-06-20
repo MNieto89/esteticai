@@ -712,7 +712,7 @@ def construir_prompt_usuario(perfil, semana_inicio=None, contenido_extra=None):
     prompt = f"""Genera el calendario de contenido semanal para este negocio.
 
 PERFIL COMPLETO:
-- Negocio: {perfil['nombre_negocio']}
+- Negocio: {perfil.get('nombre_negocio', 'Mi negocio')}
 - Propietaria: {perfil.get('propietaria', '')}
 - Ciudad: {perfil.get('ciudad', '')}
 - Tipo: {tipo}
@@ -937,13 +937,15 @@ Responde SOLO con JSON valido (sin markdown, sin ```):
 
 def _generar_demo(perfil):
     """Genera calendario demo con calidad profesional."""
-    nombre = perfil["nombre_negocio"]
+    nombre = perfil.get("nombre_negocio", "Mi negocio")
     propietaria = perfil.get("propietaria", "la propietaria")
     ciudad = perfil.get("ciudad", "tu ciudad")
-    s1 = perfil["servicios"][0] if perfil.get("servicios") else "Limpieza facial"
-    s2 = perfil["servicios"][1] if len(perfil.get("servicios", [])) > 1 else "Hidratacion facial"
-    s3 = perfil["servicios"][2] if len(perfil.get("servicios", [])) > 2 else "Radiofrecuencia facial"
-    prod = perfil["productos"][0] if perfil.get("productos") else "Serum de vitamina C"
+    servicios = perfil.get("servicios", []) or []
+    productos = perfil.get("productos", []) or []
+    s1 = servicios[0] if len(servicios) > 0 else "Limpieza facial"
+    s2 = servicios[1] if len(servicios) > 1 else "Hidratacion facial"
+    s3 = servicios[2] if len(servicios) > 2 else "Radiofrecuencia facial"
+    prod = productos[0] if len(productos) > 0 else "Serum de vitamina C"
     handle = perfil.get("instagram_handle", "@tunegocio")
 
     ciudad_tag = ciudad.lower().replace(" ", "") if ciudad and ciudad != "tu ciudad" else "esteticaprofesional"
@@ -1198,7 +1200,7 @@ def _generar_demo(perfil):
 
 def _generar_copy_demo(perfil, tipo_contenido, servicio_o_producto):
     """Genera un copy demo individual con calidad profesional."""
-    nombre = perfil["nombre_negocio"]
+    nombre = perfil.get("nombre_negocio", "Mi negocio")
     info = buscar_servicio(servicio_o_producto)
 
     if tipo_contenido == "EDUCATIVO":

@@ -773,6 +773,11 @@ h1, h2, h3 {
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
+.form-optional {
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--gris-500);
+}
 .form-hint {
     display: block;
     font-size: 12px;
