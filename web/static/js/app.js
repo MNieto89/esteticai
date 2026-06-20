@@ -368,63 +368,21 @@ function desbloquearBoton(key, btn) {
 // GENERAR COPY
 // ============================================================
 
-// Tipos de contenido que aplican a productos (el resto aplica a tratamientos)
-var TIPOS_PRODUCTO = ['PRODUCTO'];
-// Tipos donde tiene sentido mostrar ambos (tratamientos + productos)
-var TIPOS_AMBOS = ['PROMOCION', 'TENDENCIA'];
-
-function filtrarCopyServicio() {
-    var tipo = document.getElementById('copy-tipo').value;
-    var select = document.getElementById('copy-servicio');
-    var optgroups = select.querySelectorAll('optgroup');
-    var primeraVisible = null;
-
-    // Determinar que mostrar segun el tipo de contenido seleccionado
-    var mostrar;
-    if (TIPOS_PRODUCTO.indexOf(tipo) !== -1) {
-        mostrar = 'producto';
-    } else if (TIPOS_AMBOS.indexOf(tipo) !== -1) {
-        mostrar = 'ambos';
-    } else {
-        mostrar = 'tratamiento';
-    }
-
-    for (var i = 0; i < optgroups.length; i++) {
-        var og = optgroups[i];
-        var tipoGrupo = og.getAttribute('data-tipo');
-        var visible = (mostrar === 'ambos') || (tipoGrupo === mostrar);
-        og.style.display = visible ? '' : 'none';
-
-        // Ocultar/mostrar opciones dentro del optgroup
-        var opciones = og.querySelectorAll('option');
-        for (var j = 0; j < opciones.length; j++) {
-            opciones[j].style.display = visible ? '' : 'none';
-            opciones[j].disabled = !visible;
-            if (visible && !primeraVisible) {
-                primeraVisible = opciones[j];
-            }
-        }
-    }
-
-    // Seleccionar la primera opcion visible
-    if (primeraVisible) {
-        select.value = primeraVisible.value;
-    }
-}
-
-// Ejecutar al cargar para que el filtro inicial sea correcto
-document.addEventListener('DOMContentLoaded', function() {
-    var copyTipo = document.getElementById('copy-tipo');
-    if (copyTipo) filtrarCopyServicio();
-});
+// filtrarCopyServicio se define en el bloque scripts del dashboard
 
 async function generarCopy() {
     const btn = document.querySelector('#form-copy .btn-primary');
     if (!bloquearBoton('copy', btn)) return;
 
     const tipo = document.getElementById('copy-tipo').value;
-    const servicio = document.getElementById('copy-servicio').value;
+    const servicio = window.cbCopyServicio ? window.cbCopyServicio.getValor() : '';
     const resultDiv = document.getElementById('result-copy');
+
+    if (!servicio) {
+        mostrarToast('Selecciona o escribe un tratamiento o producto.', 'warning');
+        desbloquearBoton('copy', btn, 'Generar');
+        return;
+    }
 
     resultDiv.style.display = 'block';
     resultDiv.innerHTML = skeletonLoader('Generando copy profesional para tu negocio...');
@@ -494,15 +452,16 @@ function toggleDescripcionProducto() {
 }
 
 function detectarModoImagen() {
-    const select = document.getElementById('img-servicio');
     const tipo = document.getElementById('img-tipo').value;
-    const selected = select.options[select.selectedIndex];
 
     // Si el tipo de publicacion es "producto", usar modo producto
     if (tipo === 'producto') return 'producto';
 
     // Si el item seleccionado viene del grupo "Productos", usar modo producto
-    if (selected && selected.getAttribute('data-modo') === 'producto') return 'producto';
+    if (window.cbImgServicio) {
+        var attrs = window.cbImgServicio.getAttrs();
+        if (attrs && attrs.modo === 'producto') return 'producto';
+    }
 
     return 'servicio';
 }
@@ -511,9 +470,15 @@ async function generarImagen() {
     const btn = document.querySelector('#form-imagen .btn-primary');
     if (!bloquearBoton('imagen', btn)) return;
 
-    const servicio = document.getElementById('img-servicio').value;
+    const servicio = window.cbImgServicio ? window.cbImgServicio.getValor() : '';
     const tipo = document.getElementById('img-tipo').value;
     const modo = detectarModoImagen();
+
+    if (!servicio) {
+        mostrarToast('Selecciona o escribe un tratamiento o producto.', 'warning');
+        desbloquearBoton('imagen', btn, 'Generar');
+        return;
+    }
     const descEl = document.getElementById('img-descripcion-producto');
     const descripcionProducto = (descEl && descEl.value.trim()) ? descEl.value.trim() : '';
     const resultDiv = document.getElementById('result-imagen');
@@ -789,7 +754,7 @@ async function mejorarFoto() {
     }
 
     const nivel = document.getElementById('foto-nivel').value;
-    const tipoTratamiento = document.getElementById('foto-tipo-tratamiento').value;
+    const tipoTratamiento = window.cbFotoTipo ? window.cbFotoTipo.getValor() : 'facial_general';
     const tipoFondo = document.getElementById('foto-fondo').value;
     const quitarFondo = document.getElementById('foto-quitar-fondo').checked;
     const mejorarCalidad = document.getElementById('foto-mejorar').checked;
@@ -944,7 +909,7 @@ async function componerAntesDespues() {
     if (!adFotoAntes || !adFotoDespues) return;
 
     const plantilla = document.getElementById('ad-plantilla').value;
-    const tratamiento = document.getElementById('ad-tratamiento').value;
+    const tratamiento = window.cbAdTratamiento ? window.cbAdTratamiento.getValor() : '';
     const sesiones = document.getElementById('ad-sesiones').value;
     const mejora = document.getElementById('ad-mejora').value;
     const resultDiv = document.getElementById('result-antes-despues');
@@ -1240,3 +1205,290 @@ function filtrarHistorial(tipo, btn) {
     // Comprobar estado inicial
     if (!navigator.onLine) crearBannerOffline();
 })();
+
+
+/* ============================================================
+   COMBOBOX BUSCABLE
+   Componente reutilizable: input con buscador + desplegable
+   filtrable + permite escribir texto libre.
+   ============================================================ */
+
+function ComboboxBuscable(config) {
+    /*
+     * config = {
+     *   container: '#id' o elemento DOM,
+     *   opciones: [{ texto, valor, grupo, tipo, attrs: {} }],
+     *   placeholder: 'Busca o escribe...',
+     *   permitirLibre: true,
+     *   textoLibre: 'Usar: "{busqueda}"',
+     *   onSelect: function(valor, texto, attrs, esLibre) {},
+     *   filtroTipo: null  // null = mostrar todo, 'tratamiento'/'producto'/'ambos'
+     * }
+     */
+    var self = this;
+    var containerEl = typeof config.container === 'string'
+        ? document.querySelector(config.container)
+        : config.container;
+    if (!containerEl) return;
+
+    self.opciones = config.opciones || [];
+    self.permitirLibre = config.permitirLibre !== false;
+    self.textoLibre = config.textoLibre || 'Usar: "{busqueda}"';
+    self.onSelect = config.onSelect || function() {};
+    self.filtroTipo = config.filtroTipo || null;
+    self.valorActual = '';
+    self.textoActual = '';
+    self.attrsActual = {};
+    self.esLibreActual = false;
+    self.highlightIdx = -1;
+
+    // Construir DOM
+    containerEl.innerHTML = '';
+    containerEl.classList.add('combobox');
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'combobox-input';
+    input.placeholder = config.placeholder || 'Busca o escribe...';
+    input.autocomplete = 'off';
+
+    var arrow = document.createElement('span');
+    arrow.className = 'combobox-arrow';
+    arrow.textContent = '▼';
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'combobox-dropdown';
+
+    containerEl.appendChild(input);
+    containerEl.appendChild(arrow);
+    containerEl.appendChild(dropdown);
+
+    self.input = input;
+    self.dropdown = dropdown;
+    self.containerEl = containerEl;
+
+    // Renderizar opciones filtradas
+    function renderOpciones(filtro) {
+        dropdown.innerHTML = '';
+        var texto = (filtro || '').toLowerCase().trim();
+        var grupoActual = null;
+        var hayResultados = false;
+        var opcionesVisibles = [];
+
+        for (var i = 0; i < self.opciones.length; i++) {
+            var op = self.opciones[i];
+
+            // Filtrar por tipo si hay filtro de tipo activo
+            if (self.filtroTipo && self.filtroTipo !== 'ambos') {
+                if (op.tipo && op.tipo !== self.filtroTipo) continue;
+            }
+
+            // Filtrar por texto de busqueda
+            if (texto && op.texto.toLowerCase().indexOf(texto) === -1) continue;
+
+            // Mostrar encabezado de grupo si cambio
+            if (op.grupo && op.grupo !== grupoActual) {
+                grupoActual = op.grupo;
+                var grupoEl = document.createElement('div');
+                grupoEl.className = 'combobox-grupo';
+                grupoEl.textContent = op.grupo;
+                dropdown.appendChild(grupoEl);
+            }
+
+            var opEl = document.createElement('div');
+            opEl.className = 'combobox-opcion';
+            opEl.textContent = op.texto;
+            opEl.setAttribute('data-valor', op.valor || op.texto);
+            opEl.setAttribute('data-idx', opcionesVisibles.length);
+            if (self.valorActual === (op.valor || op.texto)) {
+                opEl.classList.add('selected');
+            }
+
+            (function(opcion, elemento) {
+                elemento.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    seleccionar(opcion.valor || opcion.texto, opcion.texto, opcion.attrs || {}, false);
+                });
+            })(op, opEl);
+
+            dropdown.appendChild(opEl);
+            opcionesVisibles.push(opEl);
+            hayResultados = true;
+        }
+
+        // Opcion de texto libre si hay busqueda y no coincide exacto
+        if (self.permitirLibre && texto && texto.length > 1) {
+            var existeExacto = false;
+            for (var j = 0; j < self.opciones.length; j++) {
+                if (self.opciones[j].texto.toLowerCase() === texto) {
+                    existeExacto = true;
+                    break;
+                }
+            }
+            if (!existeExacto) {
+                var customEl = document.createElement('div');
+                customEl.className = 'combobox-custom';
+                customEl.textContent = self.textoLibre.replace('{busqueda}', filtro.trim());
+                customEl.setAttribute('data-idx', opcionesVisibles.length);
+                customEl.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    seleccionar(filtro.trim(), filtro.trim(), {}, true);
+                });
+                dropdown.appendChild(customEl);
+                opcionesVisibles.push(customEl);
+                hayResultados = true;
+            }
+        }
+
+        if (!hayResultados) {
+            var emptyEl = document.createElement('div');
+            emptyEl.className = 'combobox-empty';
+            if (self.permitirLibre) {
+                emptyEl.textContent = 'Escribe lo que quieras y pulsa Enter';
+            } else {
+                emptyEl.textContent = 'Sin resultados';
+            }
+            dropdown.appendChild(emptyEl);
+        }
+
+        self._opcionesVisibles = opcionesVisibles;
+        self.highlightIdx = -1;
+    }
+
+    function seleccionar(valor, texto, attrs, esLibre) {
+        self.valorActual = valor;
+        self.textoActual = texto;
+        self.attrsActual = attrs || {};
+        self.esLibreActual = esLibre || false;
+        input.value = texto;
+        cerrar();
+        self.onSelect(valor, texto, attrs, esLibre);
+    }
+
+    function abrir() {
+        containerEl.classList.add('open');
+        renderOpciones(input.value);
+    }
+
+    function cerrar() {
+        containerEl.classList.remove('open');
+        self.highlightIdx = -1;
+    }
+
+    function moverHighlight(dir) {
+        if (!self._opcionesVisibles || self._opcionesVisibles.length === 0) return;
+        // Quitar highlight actual
+        if (self.highlightIdx >= 0 && self.highlightIdx < self._opcionesVisibles.length) {
+            self._opcionesVisibles[self.highlightIdx].classList.remove('highlighted');
+        }
+        self.highlightIdx += dir;
+        if (self.highlightIdx < 0) self.highlightIdx = self._opcionesVisibles.length - 1;
+        if (self.highlightIdx >= self._opcionesVisibles.length) self.highlightIdx = 0;
+        self._opcionesVisibles[self.highlightIdx].classList.add('highlighted');
+        // Scroll into view
+        self._opcionesVisibles[self.highlightIdx].scrollIntoView({ block: 'nearest' });
+    }
+
+    // Eventos
+    input.addEventListener('focus', function() {
+        abrir();
+    });
+
+    input.addEventListener('input', function() {
+        abrir();
+        renderOpciones(input.value);
+    });
+
+    input.addEventListener('blur', function() {
+        // Delay para permitir click en opcion
+        setTimeout(function() {
+            cerrar();
+            // Si quedo texto suelto sin seleccionar, aceptarlo como libre
+            if (input.value && input.value !== self.textoActual) {
+                if (self.permitirLibre) {
+                    seleccionar(input.value.trim(), input.value.trim(), {}, true);
+                } else {
+                    input.value = self.textoActual;
+                }
+            }
+        }, 200);
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (!containerEl.classList.contains('open')) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                abrir();
+                e.preventDefault();
+                return;
+            }
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            moverHighlight(1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            moverHighlight(-1);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (self.highlightIdx >= 0 && self._opcionesVisibles && self.highlightIdx < self._opcionesVisibles.length) {
+                self._opcionesVisibles[self.highlightIdx].dispatchEvent(new Event('mousedown'));
+            } else if (input.value.trim() && self.permitirLibre) {
+                seleccionar(input.value.trim(), input.value.trim(), {}, true);
+            }
+        } else if (e.key === 'Escape') {
+            cerrar();
+            input.blur();
+        }
+    });
+
+    // Click en flecha para toggle
+    arrow.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        if (containerEl.classList.contains('open')) {
+            cerrar();
+        } else {
+            input.focus();
+        }
+    });
+
+    // Cerrar si click fuera
+    document.addEventListener('mousedown', function(e) {
+        if (!containerEl.contains(e.target)) {
+            cerrar();
+        }
+    });
+
+    // API publica
+    self.getValor = function() { return self.valorActual; };
+    self.getTexto = function() { return self.textoActual; };
+    self.getAttrs = function() { return self.attrsActual; };
+    self.esLibre = function() { return self.esLibreActual; };
+    self.setFiltroTipo = function(tipo) {
+        self.filtroTipo = tipo;
+        if (containerEl.classList.contains('open')) {
+            renderOpciones(input.value);
+        }
+    };
+    self.setValor = function(valor, texto) {
+        self.valorActual = valor;
+        self.textoActual = texto || valor;
+        input.value = self.textoActual;
+    };
+    self.reset = function() {
+        self.valorActual = '';
+        self.textoActual = '';
+        self.attrsActual = {};
+        self.esLibreActual = false;
+        input.value = '';
+    };
+
+    // Seleccionar primera opcion por defecto si hay opciones
+    if (self.opciones.length > 0) {
+        var primera = self.opciones[0];
+        self.valorActual = primera.valor || primera.texto;
+        self.textoActual = primera.texto;
+        self.attrsActual = primera.attrs || {};
+        input.value = primera.texto;
+    }
+}

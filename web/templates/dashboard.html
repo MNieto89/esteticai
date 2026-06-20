@@ -83,15 +83,7 @@
                         <option value="PERSONAL">Personal (tu historia)</option>
                     </optgroup>
                 </select>
-                <select id="copy-servicio">
-                    {% for grupo in catalogo %}
-                    <optgroup label="{{ grupo.grupo }}" data-tipo="{{ grupo.tipo }}">
-                        {% for op in grupo.opciones %}
-                        <option value="{{ op.texto }}" data-tipo="{{ grupo.tipo }}">{{ op.texto }}</option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endfor %}
-                </select>
+                <div id="copy-servicio"></div>
                 <button class="btn btn-primary" onclick="generarCopy()">Generar</button>
             </div>
             <div class="gen-result" id="result-copy" style="display:none;"></div>
@@ -103,15 +95,7 @@
             <h3>Generar Imagen</h3>
             <p>Imagen profesional generada con IA para tus publicaciones</p>
             <div class="gen-form" id="form-imagen" style="display:none;">
-                <select id="img-servicio">
-                    {% for grupo in catalogo %}
-                    <optgroup label="{{ grupo.grupo }}">
-                        {% for op in grupo.opciones %}
-                        <option value="{{ op.texto }}" data-modo="{{ grupo.tipo }}" data-tipo-foto="{{ op.tipo_foto }}">{{ op.texto }}</option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endfor %}
-                </select>
+                <div id="img-servicio"></div>
                 <select id="img-tipo" onchange="toggleDescripcionProducto()">
                     <option value="post_feed">Post para feed</option>
                     <option value="story">Story</option>
@@ -196,16 +180,7 @@
                     <option value="basico" selected>Basico (igualar luz + limpiar fondo)</option>
                     <option value="profesional">Profesional (luz + limpieza + retoque + calidad)</option>
                 </select>
-                <select id="ad-tratamiento">
-                    <option value="">-- Selecciona el tratamiento --</option>
-                    {% for grupo in catalogo_tratamientos %}
-                    <optgroup label="{{ grupo.grupo }}">
-                        {% for op in grupo.opciones %}
-                        <option value="{{ op.texto }}">{{ op.texto }}</option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endfor %}
-                </select>
+                <div id="ad-tratamiento"></div>
                 <input type="text" id="ad-sesiones" placeholder="Sesiones (ej: Resultado de 6 sesiones)">
                 <button class="btn btn-primary" onclick="componerAntesDespues()" id="btn-ad" disabled>Sube las dos fotos</button>
             </div>
@@ -232,15 +207,7 @@
                     <option value="rapido">R&aacute;pido (solo fondo + calidad)</option>
                     <option value="premium">Premium (pipeline completo 6 pasos)</option>
                 </select>
-                <select id="foto-tipo-tratamiento">
-                    {% for grupo in catalogo %}
-                    <optgroup label="{{ grupo.grupo }}">
-                        {% for op in grupo.opciones %}
-                        <option value="{{ op.tipo_foto }}" data-id="{{ op.valor }}">{{ op.texto }}</option>
-                        {% endfor %}
-                    </optgroup>
-                    {% endfor %}
-                </select>
+                <div id="foto-tipo-tratamiento"></div>
                 <select id="foto-fondo">
                     <option value="clinica_blanco">Cl&iacute;nica profesional (blanco)</option>
                     <option value="neutro_gris">Estudio neutro (gris)</option>
@@ -340,4 +307,97 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    /* Datos del catalogo inyectados desde el servidor */
+    var catalogoCompleto = [
+        {% for grupo in catalogo %}
+        {% for op in grupo.opciones %}
+        { texto: "{{ op.texto }}", valor: "{{ op.texto }}", grupo: "{{ grupo.grupo }}", tipo: "{{ grupo.tipo }}", attrs: { modo: "{{ grupo.tipo }}", tipo_foto: "{{ op.tipo_foto }}" } },
+        {% endfor %}
+        {% endfor %}
+    ];
+
+    var catalogoTratamientos = [
+        {% for grupo in catalogo_tratamientos %}
+        {% for op in grupo.opciones %}
+        { texto: "{{ op.texto }}", valor: "{{ op.texto }}", grupo: "{{ grupo.grupo }}", tipo: "tratamiento", attrs: {} },
+        {% endfor %}
+        {% endfor %}
+    ];
+
+    /* 1. COPY - servicio/producto con filtro por tipo */
+    window.cbCopyServicio = new ComboboxBuscable({
+        container: '#copy-servicio',
+        opciones: catalogoCompleto,
+        placeholder: 'Busca tratamiento o producto...',
+        permitirLibre: true,
+        textoLibre: 'Usar: "{busqueda}"',
+        filtroTipo: 'tratamiento',
+        onSelect: function() {}
+    });
+
+    /* 2. IMAGEN - servicio/producto */
+    window.cbImgServicio = new ComboboxBuscable({
+        container: '#img-servicio',
+        opciones: catalogoCompleto,
+        placeholder: 'Busca tratamiento o producto...',
+        permitirLibre: true,
+        textoLibre: 'Usar: "{busqueda}"',
+        onSelect: function() {}
+    });
+
+    /* 3. ANTES/DESPUES - solo tratamientos */
+    window.cbAdTratamiento = new ComboboxBuscable({
+        container: '#ad-tratamiento',
+        opciones: catalogoTratamientos,
+        placeholder: 'Busca el tratamiento...',
+        permitirLibre: true,
+        textoLibre: 'Usar: "{busqueda}"',
+        onSelect: function() {}
+    });
+
+    /* 4. MEJORAR FOTO - servicio/producto (valor = tipo_foto para photo_engine) */
+    var catalogoFoto = [
+        {% for grupo in catalogo %}
+        {% for op in grupo.opciones %}
+        { texto: "{{ op.texto }}", valor: "{{ op.tipo_foto }}", grupo: "{{ grupo.grupo }}", tipo: "{{ grupo.tipo }}", attrs: { tipo_foto: "{{ op.tipo_foto }}", id: "{{ op.valor }}" } },
+        {% endfor %}
+        {% endfor %}
+    ];
+    window.cbFotoTipo = new ComboboxBuscable({
+        container: '#foto-tipo-tratamiento',
+        opciones: catalogoFoto,
+        placeholder: 'Busca tratamiento o producto...',
+        permitirLibre: true,
+        textoLibre: 'Usar: "{busqueda}"',
+        onSelect: function() {}
+    });
+
+    /* Conectar el filtro del primer desplegable de copy */
+    var TIPOS_PRODUCTO_CB = ['PRODUCTO'];
+    var TIPOS_AMBOS_CB = ['PROMOCION', 'TENDENCIA'];
+
+    window.filtrarCopyServicio = function() {
+        var tipo = document.getElementById('copy-tipo').value;
+        var mostrar;
+        if (TIPOS_PRODUCTO_CB.indexOf(tipo) !== -1) {
+            mostrar = 'producto';
+        } else if (TIPOS_AMBOS_CB.indexOf(tipo) !== -1) {
+            mostrar = 'ambos';
+        } else {
+            mostrar = 'tratamiento';
+        }
+        if (window.cbCopyServicio) {
+            window.cbCopyServicio.setFiltroTipo(mostrar);
+        }
+    };
+
+    /* Ejecutar filtro inicial */
+    filtrarCopyServicio();
+})();
+</script>
 {% endblock %}
