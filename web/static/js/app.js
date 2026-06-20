@@ -349,6 +349,56 @@ function desbloquearBoton(key, btn) {
 // GENERAR COPY
 // ============================================================
 
+// Tipos de contenido que aplican a productos (el resto aplica a tratamientos)
+var TIPOS_PRODUCTO = ['PRODUCTO'];
+// Tipos donde tiene sentido mostrar ambos (tratamientos + productos)
+var TIPOS_AMBOS = ['PROMOCION', 'TENDENCIA'];
+
+function filtrarCopyServicio() {
+    var tipo = document.getElementById('copy-tipo').value;
+    var select = document.getElementById('copy-servicio');
+    var optgroups = select.querySelectorAll('optgroup');
+    var primeraVisible = null;
+
+    // Determinar que mostrar segun el tipo de contenido seleccionado
+    var mostrar;
+    if (TIPOS_PRODUCTO.indexOf(tipo) !== -1) {
+        mostrar = 'producto';
+    } else if (TIPOS_AMBOS.indexOf(tipo) !== -1) {
+        mostrar = 'ambos';
+    } else {
+        mostrar = 'tratamiento';
+    }
+
+    for (var i = 0; i < optgroups.length; i++) {
+        var og = optgroups[i];
+        var tipoGrupo = og.getAttribute('data-tipo');
+        var visible = (mostrar === 'ambos') || (tipoGrupo === mostrar);
+        og.style.display = visible ? '' : 'none';
+
+        // Ocultar/mostrar opciones dentro del optgroup
+        var opciones = og.querySelectorAll('option');
+        for (var j = 0; j < opciones.length; j++) {
+            opciones[j].style.display = visible ? '' : 'none';
+            opciones[j].disabled = !visible;
+            if (visible && !primeraVisible) {
+                primeraVisible = opciones[j];
+            }
+        }
+    }
+
+    // Seleccionar la primera opcion visible
+    if (primeraVisible) {
+        select.value = primeraVisible.value;
+    }
+}
+
+// Ejecutar al cargar para que el filtro inicial sea correcto
+document.addEventListener('DOMContentLoaded', function() {
+    var copyTipo = document.getElementById('copy-tipo');
+    if (copyTipo) filtrarCopyServicio();
+});
+
 async function generarCopy() {
     const btn = document.querySelector('#form-copy .btn-primary');
     if (!bloquearBoton('copy', btn)) return;

@@ -66,21 +66,28 @@
             <h3>Generar Copy</h3>
             <p>Texto profesional + hashtags + CTA para tus posts</p>
             <div class="gen-form" id="form-copy" style="display:none;">
-                <select id="copy-tipo">
-                    <option value="EDUCATIVO">Educativo</option>
-                    <option value="ANTES_DESPUES">Antes y despues</option>
-                    <option value="TESTIMONIO">Testimonio</option>
-                    <option value="PRODUCTO">Producto</option>
-                    <option value="DETRAS_DE_CAMARAS">Detras de camaras</option>
-                    <option value="TENDENCIA">Tendencia</option>
-                    <option value="PROMOCION">Promocion</option>
-                    <option value="PERSONAL">Personal</option>
+                <select id="copy-tipo" onchange="filtrarCopyServicio()">
+                    <optgroup label="Sobre tratamientos">
+                        <option value="EDUCATIVO">Educativo (tips, mitos, rutinas)</option>
+                        <option value="TRATAMIENTO">Tratamiento (explicar servicio)</option>
+                        <option value="ANTES_DESPUES">Antes y despues</option>
+                        <option value="TESTIMONIO">Testimonio de clienta</option>
+                    </optgroup>
+                    <optgroup label="Sobre productos">
+                        <option value="PRODUCTO">Producto (beneficios, resena)</option>
+                    </optgroup>
+                    <optgroup label="Tu negocio">
+                        <option value="DETRAS_DE_CAMARAS">Detras de camaras</option>
+                        <option value="TENDENCIA">Tendencia (viral, actualidad)</option>
+                        <option value="PROMOCION">Promocion (oferta, pack)</option>
+                        <option value="PERSONAL">Personal (tu historia)</option>
+                    </optgroup>
                 </select>
                 <select id="copy-servicio">
                     {% for grupo in catalogo %}
-                    <optgroup label="{{ grupo.grupo }}">
+                    <optgroup label="{{ grupo.grupo }}" data-tipo="{{ grupo.tipo }}">
                         {% for op in grupo.opciones %}
-                        <option value="{{ op.texto }}">{{ op.texto }}</option>
+                        <option value="{{ op.texto }}" data-tipo="{{ grupo.tipo }}">{{ op.texto }}</option>
                         {% endfor %}
                     </optgroup>
                     {% endfor %}
