@@ -10,16 +10,31 @@ Plantillas disponibles:
 3. premium       - Con marco editorial y datos del tratamiento
 4. diagonal      - Corte diagonal moderno
 
-Todo renderizado con Pillow, coste cero, <1 segundo.
+Niveles de mejora fotografica (integrado con photo_engine):
+- sin_mejora: solo composicion con Pillow (coste cero)
+- basico: limpieza de escena + iluminacion clinica uniforme (~$0.12)
+- profesional: limpieza + iluminacion + retoque del despues + calidad (~$0.20)
+
+Regla de oro para antes/despues:
+  - Ambas fotos reciben la MISMA iluminacion (tipo "antes_despues":
+    documentacion clinica uniforme, 5500K, sin sombras) para que
+    la comparacion sea justa y honesta.
+  - La foto ANTES nunca se retoca ni se mejora el rostro. Solo
+    se limpia el entorno y se normaliza la luz.
+  - La foto DESPUES puede recibir retoque suave y mejora de calidad,
+    pero NUNCA se alteran los resultados del tratamiento.
 """
 
 import io
 import os
 import base64
+import logging
 import requests
 from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+logger = logging.getLogger("esteticai")
 
 # ============================================================
 # CONFIGURACION
@@ -487,6 +502,96 @@ PLANTILLAS = {
 }
 
 
+# ============================================================
+# NIVELES DE MEJORA FOTOGRAFICA
+# ============================================================
+# Integrados con photo_engine.py. Procesan las fotos antes de
+# componer la plantilla para que el resultado sea profesional.
+
+NIVELES_MEJORA = {
+    "sin_mejora": {
+        "nombre": "Sin mejora (solo composicion)",
+        "descripcion": "Compone la plantilla con las fotos tal cual. Gratis.",
+        "pasos_antes": [],
+        "pasos_despues": [],
+        "coste_aprox": "$0.00",
+    },
+    "basico": {
+        "nombre": "Basico (luz uniforme + limpieza)",
+        "descripcion": "Iguala la iluminacion y limpia fondos en ambas fotos.",
+        "pasos_antes": ["limpiar", "iluminar"],
+        "pasos_despues": ["limpiar", "iluminar"],
+        "coste_aprox": "$0.12",
+    },
+    "profesional": {
+        "nombre": "Profesional (pipeline completo)",
+        "descripcion": "Limpieza, luz, retoque del despues y calidad final.",
+        "pasos_antes": ["limpiar", "iluminar"],
+        "pasos_despues": ["limpiar", "iluminar", "retocar", "calidad"],
+        "coste_aprox": "$0.20",
+    },
+}
+
+
+def _mejorar_foto_para_composicion(image_url, pasos, es_antes=True, api_key=None):
+    """
+    Procesa una foto individual con pasos del photo_engine.
+
+    Reglas especificas para antes/despues:
+      - Ambas fotos usan iluminacion tipo "antes_despues" (clinica uniforme)
+      - La foto ANTES nunca recibe retoque de piel ni rostro
+      - La foto DESPUES puede recibir retoque, pero con prompts que
+        respetan los resultados del tratamiento
+    """
+    from agents.photo_engine import (
+        limpiar_escena, corregir_iluminacion,
+        retocar_y_colorear, mejorar_calidad,
+    )
+
+    url_actual = image_url
+    completados = []
+    errores = []
+
+    for paso in pasos:
+        try:
+            if paso == "limpiar":
+                # Mismo tipo para ambas: limpieza clinica neutra
+                result = limpiar_escena(url_actual, tipo="corporal", api_key=api_key)
+            elif paso == "iluminar":
+                # CRITICO: misma luz para ambas fotos -> comparacion justa
+                result = corregir_iluminacion(url_actual, tipo="antes_despues", api_key=api_key)
+            elif paso == "retocar":
+                if es_antes:
+                    # NUNCA retocar el antes: falsea el punto de partida
+                    continue
+                # El despues usa retoque tipo antes_despues: respeta resultados
+                result = retocar_y_colorear(url_actual, tipo="antes_despues", api_key=api_key)
+            elif paso == "calidad":
+                result = mejorar_calidad(url_actual, api_key=api_key)
+            else:
+                continue
+
+            if result.get("error"):
+                errores.append(f"{paso}: {result['error']}")
+                logger.warning("[AD] Error en paso %s: %s", paso, result['error'])
+            elif not result.get("demo"):
+                url_actual = result["url"]
+                completados.append(paso)
+                logger.info("[AD] Paso %s completado (%s)", paso, "antes" if es_antes else "despues")
+            else:
+                completados.append(f"{paso}_demo")
+
+        except Exception as e:
+            errores.append(f"{paso}: {str(e)}")
+            logger.warning("[AD] Excepcion en paso %s: %s", paso, e)
+
+    return {
+        "url": url_actual,
+        "pasos_completados": completados,
+        "errores": errores,
+    }
+
+
 def componer_antes_despues(img_antes_bytes, img_despues_bytes, plantilla="side_by_side", config=None):
     """
     Funcion principal: recibe los bytes de las dos fotos, genera la composicion.
@@ -501,16 +606,75 @@ def componer_antes_despues(img_antes_bytes, img_despues_bytes, plantilla="side_b
             - sesiones: str - ej "Resultado de 6 sesiones"
             - cta: str - llamada a la accion
             - color_marca: tuple (R, G, B)
+            - mejora: str - "sin_mejora" | "basico" | "profesional"
+            - api_key: str - clave fal.ai (opcional)
 
     Retorna dict con:
         - image_base64: str - imagen en base64 data URL
         - image_bytes: bytes - la imagen en JPEG
         - ancho, alto: dimensiones
         - plantilla: nombre de plantilla usada
+        - mejora_aplicada: dict con info de pasos completados (si aplica)
     """
     config = config or {}
+    mejora = config.get("mejora", "sin_mejora")
+    api_key = config.get("api_key")
 
-    # Cargar imagenes
+    if mejora not in NIVELES_MEJORA:
+        mejora = "sin_mejora"
+
+    nivel = NIVELES_MEJORA[mejora]
+
+    # --- FASE 1: Mejora fotografica (si aplica) ---
+    mejora_info = None
+
+    if mejora != "sin_mejora" and (nivel["pasos_antes"] or nivel["pasos_despues"]):
+        from agents.photo_engine import subir_imagen_a_fal
+
+        logger.info(
+            "[AD] Mejora %s: %d pasos antes + %d pasos despues",
+            mejora.upper(), len(nivel["pasos_antes"]), len(nivel["pasos_despues"]),
+        )
+
+        # Subir fotos a fal.ai
+        url_antes = subir_imagen_a_fal(img_antes_bytes, "antes.jpg")
+        url_despues = subir_imagen_a_fal(img_despues_bytes, "despues.jpg")
+
+        if not url_antes or not url_despues:
+            logger.warning("[AD] No se pudieron subir fotos. Continuando sin mejora.")
+        else:
+            # Procesar ANTES (sin retoque nunca)
+            res_antes = _mejorar_foto_para_composicion(
+                url_antes, nivel["pasos_antes"],
+                es_antes=True, api_key=api_key,
+            )
+
+            # Procesar DESPUES (puede incluir retoque)
+            res_despues = _mejorar_foto_para_composicion(
+                url_despues, nivel["pasos_despues"],
+                es_antes=False, api_key=api_key,
+            )
+
+            # Descargar las fotos mejoradas
+            img_antes_mejorada = descargar_imagen(res_antes["url"])
+            img_despues_mejorada = descargar_imagen(res_despues["url"])
+
+            mejora_info = {
+                "nivel": mejora,
+                "antes_pasos": res_antes["pasos_completados"],
+                "despues_pasos": res_despues["pasos_completados"],
+                "errores": res_antes["errores"] + res_despues["errores"],
+            }
+
+            # Si se descargaron bien, convertir a bytes para reemplazar
+            if img_antes_mejorada:
+                img_antes_bytes = imagen_a_bytes(img_antes_mejorada)
+                logger.info("[AD] Foto ANTES mejorada (%d pasos)", len(res_antes["pasos_completados"]))
+            if img_despues_mejorada:
+                img_despues_bytes = imagen_a_bytes(img_despues_mejorada)
+                logger.info("[AD] Foto DESPUES mejorada (%d pasos)", len(res_despues["pasos_completados"]))
+
+    # --- FASE 2: Composicion (Pillow, gratis) ---
     img_antes = cargar_imagen_bytes(img_antes_bytes)
     img_despues = cargar_imagen_bytes(img_despues_bytes)
 
@@ -519,22 +683,20 @@ def componer_antes_despues(img_antes_bytes, img_despues_bytes, plantilla="side_b
     if not img_despues:
         return {"error": "No se pudo cargar la foto del DESPUES"}
 
-    # Seleccionar plantilla
     func = PLANTILLAS.get(plantilla, componer_side_by_side)
     ancho, alto = FORMATOS.get(plantilla, (1080, 1080))
 
-    print(f"[Esteticai] Componiendo antes/despues con plantilla '{plantilla}' ({ancho}x{alto})...")
+    logger.info("[AD] Componiendo con plantilla '%s' (%dx%d)...", plantilla, ancho, alto)
 
     try:
         resultado = func(img_antes, img_despues, config)
 
-        # Generar output
         img_bytes = imagen_a_bytes(resultado, formato="JPEG", calidad=92)
         img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
-        print(f"[Esteticai] Composicion lista: {len(img_bytes) / 1024:.0f} KB")
+        logger.info("[AD] Composicion lista: %d KB", len(img_bytes) // 1024)
 
-        return {
+        respuesta = {
             "image_base64": f"data:image/jpeg;base64,{img_b64}",
             "image_bytes": img_bytes,
             "ancho": ancho,
@@ -543,11 +705,28 @@ def componer_antes_despues(img_antes_bytes, img_despues_bytes, plantilla="side_b
             "plantilla_nombre": PLANTILLA_INFO.get(plantilla, {}).get("nombre", plantilla),
             "tamano_kb": round(len(img_bytes) / 1024),
         }
+
+        if mejora_info:
+            respuesta["mejora_aplicada"] = mejora_info
+
+        return respuesta
     except Exception as e:
-        print(f"[ERROR] Fallo en composicion: {e}")
+        logger.error("[AD] Fallo en composicion: %s", e)
         return {"error": f"Error al componer la imagen: {str(e)}"}
 
 
 def obtener_plantillas_disponibles():
     """Devuelve la info de todas las plantillas disponibles."""
     return PLANTILLA_INFO
+
+
+def obtener_niveles_mejora_ad():
+    """Devuelve info de los niveles de mejora para antes/despues."""
+    return {
+        k: {
+            "nombre": v["nombre"],
+            "descripcion": v["descripcion"],
+            "coste_aprox": v["coste_aprox"],
+        }
+        for k, v in NIVELES_MEJORA.items()
+    }

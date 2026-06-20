@@ -184,6 +184,11 @@
                     <option value="diagonal">Corte diagonal moderno (Feed 1:1)</option>
                     <option value="story">Formato Story (9:16)</option>
                 </select>
+                <select id="ad-mejora">
+                    <option value="sin_mejora">Sin mejora (solo composicion)</option>
+                    <option value="basico" selected>Basico (igualar luz + limpiar fondo)</option>
+                    <option value="profesional">Profesional (luz + limpieza + retoque + calidad)</option>
+                </select>
                 <select id="ad-tratamiento">
                     <option value="">-- Selecciona el tratamiento --</option>
                     {% for grupo in catalogo_tratamientos %}

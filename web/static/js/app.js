@@ -877,13 +877,21 @@ async function componerAntesDespues() {
     const plantilla = document.getElementById('ad-plantilla').value;
     const tratamiento = document.getElementById('ad-tratamiento').value;
     const sesiones = document.getElementById('ad-sesiones').value;
+    const mejora = document.getElementById('ad-mejora').value;
     const resultDiv = document.getElementById('result-antes-despues');
     const btn = document.getElementById('btn-ad');
 
+    // Mensajes de progreso segun nivel de mejora
+    const mensajes = {
+        sin_mejora: 'Creando composicion antes/despues...',
+        basico: 'Igualando iluminacion y limpiando fondos de ambas fotos...',
+        profesional: 'Mejorando fotos: limpieza, luz, retoque y calidad...',
+    };
+
     resultDiv.style.display = 'block';
-    resultDiv.innerHTML = skeletonLoader('Creando composición antes/después...');
+    resultDiv.innerHTML = skeletonLoader(mensajes[mejora] || mensajes.sin_mejora);
     btn.disabled = true;
-    btn.textContent = 'Creando...';
+    btn.textContent = mejora === 'sin_mejora' ? 'Creando...' : 'Mejorando y componiendo...';
 
     const formData = new FormData();
     formData.append('foto_antes', adFotoAntes);
@@ -891,6 +899,7 @@ async function componerAntesDespues() {
     formData.append('plantilla', plantilla);
     formData.append('tratamiento', tratamiento);
     formData.append('sesiones', sesiones);
+    formData.append('mejora', mejora);
 
     try {
         const resp = await fetch('/api/componer-antes-despues', {
@@ -908,6 +917,17 @@ async function componerAntesDespues() {
             html += `<span class="copy-tag">${r.plantilla_nombre}</span>`;
             html += `<span class="copy-tag">${r.ancho}x${r.alto}</span>`;
             html += `<span class="copy-tag">${r.tamano_kb} KB</span>`;
+
+            // Mostrar info de mejora si se aplico
+            if (r.mejora_aplicada) {
+                const m = r.mejora_aplicada;
+                const totalPasos = (m.antes_pasos || []).length + (m.despues_pasos || []).length;
+                const nombresP = {limpiar:'Limpieza',iluminar:'Luz',retocar:'Retoque',calidad:'Calidad'};
+                const pasosAntes = (m.antes_pasos||[]).map(p => nombresP[p]||p).join(', ');
+                const pasosDespues = (m.despues_pasos||[]).map(p => nombresP[p]||p).join(', ');
+                html += `<span class="copy-tag">${totalPasos} pasos de mejora</span>`;
+            }
+
             html += `</div>`;
             html += `<div class="ad-actions">`;
             html += `<button class="btn btn-primary" onclick="descargarImagen('${r.image_base64}', 'esteticai_antes_despues_${plantilla}')">Descargar imagen</button>`;

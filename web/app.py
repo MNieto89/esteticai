@@ -2347,6 +2347,7 @@ async def api_componer_antes_despues(
     tratamiento: str = Form(""),
     sesiones: str = Form(""),
     cta: str = Form(""),
+    mejora: str = Form("sin_mejora"),
 ):
     user = get_usuario_actual(request)
     if not user:
@@ -2369,6 +2370,11 @@ async def api_componer_antes_despues(
     if len(bytes_antes) > max_size or len(bytes_despues) > max_size:
         return JSONResponse({"error": "Las fotos son demasiado grandes (max 10MB cada una)"}, status_code=400)
 
+    # Validar nivel de mejora
+    niveles_validos = ["sin_mejora", "basico", "profesional"]
+    if mejora not in niveles_validos:
+        mejora = "sin_mejora"
+
     # Config de composicion con datos del perfil
     config = {
         "nombre_negocio": perfil.get("nombre_negocio", ""),
@@ -2376,6 +2382,8 @@ async def api_componer_antes_despues(
         "sesiones": sesiones,
         "cta": cta or "Reserva tu valoracion gratuita",
         "color_marca": (98, 201, 184),  # Mint Esteticai (#62C9B8)
+        "mejora": mejora,
+        "api_key": os.environ.get("FAL_KEY"),
     }
 
     try:
@@ -2400,6 +2408,8 @@ async def api_componer_antes_despues(
                 "plantilla": plantilla,
                 "tratamiento": tratamiento,
                 "tamano_kb": resultado.get("tamano_kb"),
+                "mejora": mejora,
+                "mejora_info": resultado.get("mejora_aplicada"),
             },
         )
 
