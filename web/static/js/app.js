@@ -206,6 +206,8 @@ function cerrarOnboarding() {
     if (overlay) overlay.remove();
     document.querySelectorAll('.onboarding-highlight').forEach(el => el.classList.remove('onboarding-highlight'));
     localStorage.setItem('esteticai_onboarding_visto', '1');
+    // Notificar al servidor que completo el onboarding
+    fetch('/api/onboarding-completado', { method: 'POST', headers: { 'Content-Type': 'application/json' } }).catch(function() {});
 }
 
 // Iniciar onboarding al cargar + lazy load de imágenes
@@ -316,7 +318,10 @@ async function apiCall(url, data) {
     }
 
     if (!res.ok && json.error) {
-        if (res.status === 429) {
+        if (res.status === 429 && json.upgrade) {
+            // Limite de plan alcanzado: mostrar modal de upselling
+            mostrarUpgradeModal(json.error, json.mensaje_upgrade);
+        } else if (res.status === 429) {
             mostrarToast(json.error, 'warning', 6000);
         } else if (res.status === 401) {
             mostrarSesionExpirada();
@@ -326,6 +331,53 @@ async function apiCall(url, data) {
     }
     return json;
 }
+
+
+function mostrarUpgradeModal(mensaje, mensajeUpgrade) {
+    // Eliminar modal anterior si existe
+    var prev = document.getElementById('upgrade-modal-overlay');
+    if (prev) prev.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'upgrade-modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:white;border-radius:16px;padding:32px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
+    var iconDiv = document.createElement('div');
+    iconDiv.style.cssText = 'width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#62C9B8,#4BA89A);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;';
+    iconDiv.textContent = '↑';
+
+    var h3 = document.createElement('h3');
+    h3.style.cssText = 'font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:8px;';
+    h3.textContent = mensaje;
+
+    var p = document.createElement('p');
+    p.style.cssText = 'font-size:14px;color:#666;margin-bottom:24px;line-height:1.5;';
+    p.textContent = mensajeUpgrade;
+
+    var btnUpgrade = document.createElement('a');
+    btnUpgrade.href = '/precios';
+    btnUpgrade.style.cssText = 'display:inline-block;background:linear-gradient(135deg,#62C9B8,#4BA89A);color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:12px;';
+    btnUpgrade.textContent = 'Ver planes';
+
+    var btnCerrar = document.createElement('button');
+    btnCerrar.style.cssText = 'display:block;margin:0 auto;background:none;border:none;color:#999;font-size:13px;cursor:pointer;padding:8px;';
+    btnCerrar.textContent = 'Cerrar';
+    btnCerrar.onclick = function() { overlay.remove(); };
+
+    modal.appendChild(iconDiv);
+    modal.appendChild(h3);
+    modal.appendChild(p);
+    modal.appendChild(btnUpgrade);
+    modal.appendChild(btnCerrar);
+    overlay.appendChild(modal);
+
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+}
+
 
 function mostrarSesionExpirada() {
     // Evitar mostrar el overlay multiples veces
@@ -788,6 +840,19 @@ async function mejorarFoto() {
         });
         const data = await res.json();
 
+        /* Modo asincrono: el servidor devuelve job_id y hacemos polling */
+        if (data.ok && data.async && data.job_id) {
+            resultDiv.innerHTML = '<div class="foto-progress">Procesando foto... (pipeline de 6 pasos, puede tardar 30-60s)</div>';
+            var pollData = await pollJob(data.job_id, resultDiv);
+            if (!pollData || !pollData.ok) {
+                resultDiv.innerHTML = '<div>Error: ' + escapeHtml((pollData && pollData.error) || 'Timeout procesando foto') + '</div>';
+                btn.disabled = false;
+                btn.textContent = 'Mejorar otra foto';
+                return;
+            }
+            data.resultado = pollData.resultado;
+        }
+
         if (data.ok && data.resultado) {
             const r = data.resultado;
             let html = '';
@@ -998,6 +1063,29 @@ function resetAntesDespues() {
 // ============================================================
 // DESCARGAR IMAGEN (universal - URL y base64)
 // ============================================================
+
+/* Polling para jobs asincrono (mejorar foto) */
+async function pollJob(jobId, statusDiv) {
+    var maxAttempts = 60; /* 60 x 2s = 2 min max */
+    var pasos = ['Analizando imagen', 'Eliminando fondo', 'Aplicando fondo profesional',
+                 'Mejorando iluminacion', 'Retocando detalles', 'Mejorando calidad'];
+    for (var i = 0; i < maxAttempts; i++) {
+        await new Promise(function(r) { setTimeout(r, 2000); });
+        try {
+            var res = await fetch('/api/job/' + jobId);
+            var data = await res.json();
+            if (data.status === 'done') return data;
+            if (data.status === 'error') return data;
+            /* Mostrar paso actual estimado */
+            var pasoIdx = Math.min(Math.floor(i / 8), pasos.length - 1);
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="foto-progress">' + pasos[pasoIdx] + '...</div>';
+            }
+        } catch (e) { /* retry */ }
+    }
+    return null; /* timeout */
+}
+
 
 function descargarImagen(src, nombre) {
     const fecha = new Date();

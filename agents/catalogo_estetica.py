@@ -374,14 +374,23 @@ CATALOGO_PRODUCTOS = {
 
 
 # ============================================================
-# FUNCIONES DE ACCESO
+# FUNCIONES DE ACCESO (cacheadas - datos estaticos)
 # ============================================================
+
+# Cache en modulo: se construyen una sola vez al primer acceso
+_cache_tratamientos = None
+_cache_productos = None
+_cache_todo = None
 
 def obtener_tratamientos_para_select():
     """
     Devuelve la estructura lista para generar <select> con <optgroup>.
     Formato: [{"grupo": "Tratamientos faciales", "opciones": [{"valor": "id", "texto": "nombre"}, ...]}]
+    Cacheado: datos estaticos, se construye una sola vez.
     """
+    global _cache_tratamientos
+    if _cache_tratamientos is not None:
+        return _cache_tratamientos
     grupos = []
     for cat_id, cat in CATALOGO_TRATAMIENTOS.items():
         grupo = {
@@ -393,13 +402,18 @@ def obtener_tratamientos_para_select():
             ],
         }
         grupos.append(grupo)
+    _cache_tratamientos = grupos
     return grupos
 
 
 def obtener_productos_para_select():
     """
     Devuelve la estructura lista para generar <select> con <optgroup>.
+    Cacheado: datos estaticos, se construye una sola vez.
     """
+    global _cache_productos
+    if _cache_productos is not None:
+        return _cache_productos
     grupos = []
     for cat_id, cat in CATALOGO_PRODUCTOS.items():
         grupo = {
@@ -411,6 +425,7 @@ def obtener_productos_para_select():
             ],
         }
         grupos.append(grupo)
+    _cache_productos = grupos
     return grupos
 
 
@@ -418,7 +433,11 @@ def obtener_todo_para_select():
     """
     Devuelve tratamientos + productos en una sola estructura para
     generar un <select> unificado (usado en Generar Imagen, Copy, etc.)
+    Cacheado: datos estaticos, se construye una sola vez.
     """
+    global _cache_todo
+    if _cache_todo is not None:
+        return _cache_todo
     grupos = []
     # Primero tratamientos
     for cat_id, cat in CATALOGO_TRATAMIENTOS.items():
@@ -444,6 +463,7 @@ def obtener_todo_para_select():
             ],
         }
         grupos.append(grupo)
+    _cache_todo = grupos
     return grupos
 
 

@@ -12,6 +12,7 @@ import hashlib
 import secrets
 import logging
 import uuid
+import asyncio
 import bcrypt
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -96,6 +97,8 @@ BASE_DIR = Path(__file__).parent
 # Detectar produccion: Railway O Render
 IS_PRODUCTION = bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RENDER"))
 SECRET_KEY = os.environ.get("SESSION_SECRET") or os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+ANALYTICS_ID = os.environ.get("ANALYTICS_ID", "")  # Google Analytics Measurement ID (ej: G-XXXXXXXXXX)
+BASE_URL = os.environ.get("BASE_URL", "https://esteticai.onrender.com")
 
 app = FastAPI(title="Esteticai", version="1.0")
 
@@ -202,6 +205,8 @@ _original_template_response = templates.TemplateResponse
 def _csrf_template_response(request, name, context=None, status_code=200, **kwargs):
     ctx = context or {}
     ctx.setdefault("csrf_token", generar_csrf_token(request))
+    ctx.setdefault("analytics_id", ANALYTICS_ID)
+    ctx.setdefault("base_url", BASE_URL)
     return _original_template_response(request, name, context=ctx, status_code=status_code, **kwargs)
 
 templates.TemplateResponse = _csrf_template_response
@@ -444,6 +449,24 @@ def _cleanup_rate_limits():
 
     logger.debug("Rate limit cleanup: %d users, %d IPs, %d login entries",
                  len(_rate_limits), len(_ip_rate_limits), len(_login_intentos_fallidos))
+
+
+# ============================================================
+# JOBS ASINCRONO (procesamiento foto en background)
+# ============================================================
+
+_jobs = {}  # job_id -> {"status": "pending"|"running"|"done"|"error", "result": ..., "error": ...}
+_MAX_JOBS = 100  # Limpia automaticamente los mas antiguos
+
+
+def _limpiar_jobs_viejos():
+    """Elimina jobs completados con mas de 30 min."""
+    ahora = datetime.utcnow()
+    viejos = [jid for jid, j in _jobs.items()
+              if j.get("status") in ("done", "error")
+              and (ahora - j.get("created", ahora)).total_seconds() > 1800]
+    for jid in viejos:
+        del _jobs[jid]
 
 
 # ============================================================
@@ -693,23 +716,49 @@ def get_uso_mensual(user_id):
     }
 
 
+# Coste estimado por tipo de generacion (en EUR)
+# Basado en precios publicos de fal.ai y Anthropic API (junio 2026)
+_COSTE_POR_TIPO = {
+    "copy": 0.008,         # ~800 tokens Sonnet = ~$0.008
+    "imagen": 0.04,        # FLUX Pro ~$0.04/imagen
+    "video": 0.25,         # Kling Video ~$0.25/video
+    "foto": 0.12,          # Pipeline 6 pasos: BiRefNet+Bria+ICLight+CodeFormer+Kontext+Upscaler
+    "composicion": 0.15,   # Pipeline foto + composicion
+    "calendario": 0.05,    # ~5000 tokens Sonnet
+}
+
+
 def incrementar_uso(user_id, tipo_gen):
-    """Incrementa el contador de uso mensual para un tipo de generación."""
+    """Incrementa el contador de uso mensual y el coste API estimado."""
     campo = TIPO_A_CAMPO_USO.get(tipo_gen)
     if not campo:
         return
+    coste = _COSTE_POR_TIPO.get(tipo_gen, 0.0)
     now = datetime.utcnow()
     with db_connection() as db:
         db.execute(f"""
-            INSERT INTO uso_mensual (usuario_id, anio, mes, {campo})
-            VALUES (?, ?, ?, 1)
+            INSERT INTO uso_mensual (usuario_id, anio, mes, {campo}, coste_api_eur)
+            VALUES (?, ?, ?, 1, ?)
             ON CONFLICT(usuario_id, anio, mes)
-            DO UPDATE SET {campo} = {campo} + 1
-        """, (user_id, now.year, now.month))
+            DO UPDATE SET {campo} = {campo} + 1, coste_api_eur = coste_api_eur + ?
+        """, (user_id, now.year, now.month, coste, coste))
+
+
+_NOMBRES_RECURSO = {
+    "copys": "copys", "imagenes": "imagenes", "videos": "videos",
+    "fotos": "mejoras de foto", "composiciones": "composiciones", "calendarios": "calendarios",
+}
+
+_PLAN_UPGRADE = {
+    "free": ("Starter", 59),
+    "starter": ("Pro", 149),
+    "pro": ("Business", 249),
+    "trial": ("Starter", 59),
+}
 
 
 def verificar_limite_plan(user, tipo_gen):
-    """Verifica si el usuario puede generar. Retorna (ok, mensaje_error)."""
+    """Verifica si el usuario puede generar. Retorna (ok, mensaje_error_o_dict)."""
     plan_id = get_plan_usuario(user)
     plan = PLANES.get(plan_id, PLANES["free"])
     campo = TIPO_A_CAMPO_USO.get(tipo_gen)
@@ -717,15 +766,38 @@ def verificar_limite_plan(user, tipo_gen):
         return True, ""
 
     limite = plan["limites"].get(campo, 0)
+    nombre_recurso = _NOMBRES_RECURSO.get(campo, campo)
+
     if limite == -1:  # Ilimitado
         return True, ""
+
+    # Buscar plan recomendado para upgrade
+    upgrade_nombre, upgrade_precio = _PLAN_UPGRADE.get(plan_id, ("Business", 249))
+
     if limite == 0:  # No incluido en el plan
-        return False, f"Tu plan {plan['nombre']} no incluye esta funci\u00f3n. Actualiza a un plan superior."
+        return False, {
+            "error": f"Tu plan {plan['nombre']} no incluye {nombre_recurso}.",
+            "upgrade": True,
+            "upgrade_plan": upgrade_nombre,
+            "upgrade_precio": upgrade_precio,
+            "mensaje_upgrade": f"Con {upgrade_nombre} ({upgrade_precio} EUR/mes) puedes generar {nombre_recurso}.",
+        }
 
     uso = get_uso_mensual(user["id"])
     usado = uso.get(campo, 0)
     if usado >= limite:
-        return False, f"Has alcanzado el l\u00edmite mensual de {limite} {campo} en tu plan {plan['nombre']}. Actualiza tu plan para generar m\u00e1s."
+        # Buscar cuanto ofrece el plan superior
+        plan_superior = PLANES.get(upgrade_nombre.lower(), {})
+        limite_superior = plan_superior.get("limites", {}).get(campo, -1)
+        texto_superior = "ilimitadas" if limite_superior == -1 else str(limite_superior)
+
+        return False, {
+            "error": f"Has usado {usado}/{limite} {nombre_recurso} este mes.",
+            "upgrade": True,
+            "upgrade_plan": upgrade_nombre,
+            "upgrade_precio": upgrade_precio,
+            "mensaje_upgrade": f"Con {upgrade_nombre} ({upgrade_precio} EUR/mes) tienes {texto_superior} {nombre_recurso} al mes.",
+        }
 
     return True, ""
 
@@ -990,6 +1062,10 @@ async def login_submit(request: Request, email: str = Form(""), password: str = 
     # Login exitoso
     limpiar_login_fallidos(email)
     _migrar_password_si_legacy(user["id"], password, user["password_hash"])
+    # Actualizar ultimo acceso
+    with db_connection() as dbc:
+        dbc.execute("UPDATE usuarios SET ultimo_acceso = ? WHERE id = ?",
+                    (datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), user["id"]))
     request.session["user_id"] = user["id"]
     request.session["user_email"] = user["email"]  # Para bypass admin en modo mantenimiento
     return RedirectResponse("/dashboard", status_code=303)
@@ -1035,9 +1111,25 @@ async def registro_submit(request: Request, nombre: str = Form(""),
             "nombre_value": nombre, "email_value": email,
         })
     trial_ends = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+    # Capturar fuente de trafico (UTM)
+    utm_source = sanitizar_texto(str(request.query_params.get("utm_source", "")), 100)
+    utm_medium = sanitizar_texto(str(request.query_params.get("utm_medium", "")), 100)
+    utm_campaign = sanitizar_texto(str(request.query_params.get("utm_campaign", "")), 100)
+    # Codigo unico de referido para esta usuaria
+    codigo_referido = secrets.token_urlsafe(8)
+    # Verificar si llega referida por otra usuaria
+    ref_code = sanitizar_texto(str(request.query_params.get("ref", "")), 20)
+    referido_por = 0
+    if ref_code:
+        ref_user = db.execute("SELECT id FROM usuarios WHERE codigo_referido = ?", (ref_code,)).fetchone()
+        if ref_user:
+            referido_por = ref_user["id"]
     db.execute(
-        "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at, email_verificado) VALUES (?, ?, ?, 'trial', ?, 0)",
-        (email, hash_password(password), nombre, trial_ends)
+        "INSERT INTO usuarios (email, password_hash, nombre, plan, trial_ends_at, email_verificado, "
+        "utm_source, utm_medium, utm_campaign, codigo_referido, referido_por) "
+        "VALUES (?, ?, ?, 'trial', ?, 0, ?, ?, ?, ?, ?)",
+        (email, hash_password(password), nombre, trial_ends,
+         utm_source, utm_medium, utm_campaign, codigo_referido, referido_por)
     )
     db.commit()
     user = db.execute("SELECT id FROM usuarios WHERE email = ?", (email,)).fetchone()
@@ -1286,25 +1378,42 @@ async def dashboard(request: Request):
     if not perfil:
         return RedirectResponse("/perfil/crear", status_code=303)
 
-    # Paginación del historial
+    # Paginacion del historial con filtros
     try:
         pagina = max(1, int(request.query_params.get("pagina", "1")))
     except (ValueError, TypeError):
         pagina = 1
 
+    filtro_tipo = request.query_params.get("tipo", "").strip()
+    tipos_validos = ["copy", "imagen", "video", "calendario", "foto_mejorada", "composicion"]
+    if filtro_tipo and filtro_tipo not in tipos_validos:
+        filtro_tipo = ""
+
     db = get_db()
-    total_gen = db.execute(
-        "SELECT COUNT(*) as c FROM generaciones WHERE usuario_id = ?", (user["id"],)
-    ).fetchone()["c"]
+    if filtro_tipo:
+        total_gen = db.execute(
+            "SELECT COUNT(*) as c FROM generaciones WHERE usuario_id = ? AND tipo = ?",
+            (user["id"], filtro_tipo)
+        ).fetchone()["c"]
+    else:
+        total_gen = db.execute(
+            "SELECT COUNT(*) as c FROM generaciones WHERE usuario_id = ?", (user["id"],)
+        ).fetchone()["c"]
 
     total_paginas = max(1, (total_gen + HISTORIAL_POR_PAGINA - 1) // HISTORIAL_POR_PAGINA)
     pagina = min(pagina, total_paginas)
     offset = (pagina - 1) * HISTORIAL_POR_PAGINA
 
-    generaciones = db.execute(
-        "SELECT * FROM generaciones WHERE usuario_id = ? ORDER BY creado_en DESC LIMIT ? OFFSET ?",
-        (user["id"], HISTORIAL_POR_PAGINA, offset)
-    ).fetchall()
+    if filtro_tipo:
+        generaciones = db.execute(
+            "SELECT * FROM generaciones WHERE usuario_id = ? AND tipo = ? ORDER BY creado_en DESC LIMIT ? OFFSET ?",
+            (user["id"], filtro_tipo, HISTORIAL_POR_PAGINA, offset)
+        ).fetchall()
+    else:
+        generaciones = db.execute(
+            "SELECT * FROM generaciones WHERE usuario_id = ? ORDER BY creado_en DESC LIMIT ? OFFSET ?",
+            (user["id"], HISTORIAL_POR_PAGINA, offset)
+        ).fetchall()
     db.close()
 
     plan_info = get_info_plan_usuario(user)
@@ -1320,6 +1429,8 @@ async def dashboard(request: Request):
         "pagina": pagina,
         "total_paginas": total_paginas,
         "total_generaciones": total_gen,
+        "filtro_tipo": filtro_tipo,
+        "tipos_historial": tipos_validos,
         "catalogo": catalogo_select,
         "catalogo_tratamientos": catalogo_tratamientos,
     })
@@ -1825,6 +1936,21 @@ async def cambiar_password(request: Request,
 
 
 # ============================================================
+# API - ONBOARDING / TRACKING
+# ============================================================
+
+@app.post("/api/onboarding-completado")
+async def api_onboarding_completado(request: Request):
+    """Marca el onboarding como completado en la BD."""
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"ok": False}, status_code=401)
+    with db_connection() as db:
+        db.execute("UPDATE usuarios SET onboarding_completado = 1 WHERE id = ?", (user["id"],))
+    return JSONResponse({"ok": True})
+
+
+# ============================================================
 # API - DIAGNOSTICO (para depurar problemas de configuracion)
 # ============================================================
 
@@ -1872,9 +1998,9 @@ async def api_generar_copy(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    ok, msg = verificar_limite_plan(user, "copy")
+    ok, limite_info = verificar_limite_plan(user, "copy")
     if not ok:
-        return JSONResponse({"error": msg}, status_code=429)
+        return JSONResponse(limite_info, status_code=429)
     rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/copy")
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
@@ -1922,9 +2048,9 @@ async def api_generar_imagen(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    ok, msg = verificar_limite_plan(user, "imagen")
+    ok, limite_info = verificar_limite_plan(user, "imagen")
     if not ok:
-        return JSONResponse({"error": msg}, status_code=429)
+        return JSONResponse(limite_info, status_code=429)
     rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/imagen")
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
@@ -1979,9 +2105,9 @@ async def api_generar_video(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    ok, msg = verificar_limite_plan(user, "video")
+    ok, limite_info = verificar_limite_plan(user, "video")
     if not ok:
-        return JSONResponse({"error": msg}, status_code=429)
+        return JSONResponse(limite_info, status_code=429)
     rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/video")
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
@@ -2164,9 +2290,9 @@ async def api_generar_calendario(request: Request):
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    ok, msg = verificar_limite_plan(user, "calendario")
+    ok, limite_info = verificar_limite_plan(user, "calendario")
     if not ok:
-        return JSONResponse({"error": msg}, status_code=429)
+        return JSONResponse(limite_info, status_code=429)
     rl_ok, rl_info = check_rate_limit(user["id"], "/api/generar/calendario")
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
@@ -2314,6 +2440,35 @@ async def api_calendario_pdf(request: Request):
 # API - MEJORAR FOTO REAL
 # ============================================================
 
+async def _procesar_foto_background(job_id, user_id, perfil_id, image_url, opciones, nivel, tipo_fondo, tipo_tratamiento):
+    """Ejecuta el pipeline de foto en background y guarda resultado en _jobs."""
+    _jobs[job_id]["status"] = "running"
+    try:
+        loop = asyncio.get_event_loop()
+        resultado = await loop.run_in_executor(
+            None,
+            lambda: procesar_foto_tratamiento(image_url=image_url, opciones=opciones)
+        )
+        guardar_generacion(
+            user_id, perfil_id, "foto_mejorada",
+            imagen_url=resultado.get("url_final"),
+            metadata={
+                "original_url": resultado.get("original_url"),
+                "nivel": nivel,
+                "pasos": resultado.get("pasos_completados", []),
+                "tipo_fondo": tipo_fondo,
+                "tipo_tratamiento": tipo_tratamiento,
+            },
+        )
+        incrementar_uso(user_id, "foto")
+        _jobs[job_id]["status"] = "done"
+        _jobs[job_id]["result"] = resultado
+    except Exception as e:
+        logger.error("Photo job %s failed: %s", job_id, e)
+        _jobs[job_id]["status"] = "error"
+        _jobs[job_id]["error"] = str(e)
+
+
 @app.post("/api/mejorar-foto")
 async def api_mejorar_foto(
     request: Request,
@@ -2327,9 +2482,9 @@ async def api_mejorar_foto(
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    ok, msg = verificar_limite_plan(user, "foto")
+    ok, limite_info = verificar_limite_plan(user, "foto")
     if not ok:
-        return JSONResponse({"error": msg}, status_code=429)
+        return JSONResponse(limite_info, status_code=429)
     rl_ok, rl_info = check_rate_limit(user["id"], "/api/mejorar-foto")
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
@@ -2348,7 +2503,6 @@ async def api_mejorar_foto(
         if not image_url:
             return JSONResponse({"error": "No se pudo subir la imagen"}, status_code=500)
 
-        # Procesar con pipeline profesional
         opciones = {
             "nivel": nivel if nivel in ("rapido", "profesional", "premium") else "profesional",
             "eliminar_fondo": eliminar_fondo.lower() == "true",
@@ -2356,28 +2510,38 @@ async def api_mejorar_foto(
             "tipo_fondo": tipo_fondo,
             "tipo_tratamiento": tipo_tratamiento,
         }
-        resultado = procesar_foto_tratamiento(
-            image_url=image_url,
-            opciones=opciones,
-        )
 
-        # Guardar en historial
-        guardar_generacion(
-            user["id"], perfil["id"], "foto_mejorada",
-            imagen_url=resultado.get("url_final"),
-            metadata={
-                "original_url": resultado.get("original_url"),
-                "nivel": nivel,
-                "pasos": resultado.get("pasos_completados", []),
-                "tipo_fondo": tipo_fondo,
-                "tipo_tratamiento": tipo_tratamiento,
-            },
-        )
-        incrementar_uso(user["id"], "foto")
-        return JSONResponse({"ok": True, "resultado": resultado}, headers=rl_info)
+        # Modo asincrono: lanza en background y devuelve job_id
+        _limpiar_jobs_viejos()
+        job_id = uuid.uuid4().hex[:12]
+        _jobs[job_id] = {"status": "pending", "created": datetime.utcnow()}
+
+        asyncio.create_task(_procesar_foto_background(
+            job_id, user["id"], perfil["id"], image_url, opciones,
+            nivel, tipo_fondo, tipo_tratamiento
+        ))
+
+        return JSONResponse({"ok": True, "async": True, "job_id": job_id}, headers=rl_info)
     except Exception as e:
         logger.error("Photo improvement failed: %s", e)
         return JSONResponse({"error": "No se pudo mejorar la foto. Intentalo de nuevo."}, status_code=500)
+
+
+@app.get("/api/job/{job_id}")
+async def api_job_status(request: Request, job_id: str):
+    """Consulta el estado de un job asincrono (polling desde el frontend)."""
+    user = get_usuario_actual(request)
+    if not user:
+        return JSONResponse({"error": "No autenticado"}, status_code=401)
+    job = _jobs.get(job_id)
+    if not job:
+        return JSONResponse({"error": "Job no encontrado"}, status_code=404)
+    if job["status"] == "done":
+        return JSONResponse({"ok": True, "status": "done", "resultado": job["result"]})
+    elif job["status"] == "error":
+        return JSONResponse({"ok": False, "status": "error", "error": job.get("error", "Error desconocido")})
+    else:
+        return JSONResponse({"ok": True, "status": job["status"]})
 
 
 @app.get("/api/fondos-disponibles")
@@ -2404,9 +2568,9 @@ async def api_componer_antes_despues(
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
-    ok, msg = verificar_limite_plan(user, "composicion")
+    ok, limite_info = verificar_limite_plan(user, "composicion")
     if not ok:
-        return JSONResponse({"error": msg}, status_code=429)
+        return JSONResponse(limite_info, status_code=429)
     rl_ok, rl_info = check_rate_limit(user["id"], "/api/componer-antes-despues")
     if not rl_ok:
         return JSONResponse({"error": "Demasiadas peticiones. Espera un poco."}, status_code=429, headers=rl_info)
@@ -2506,278 +2670,52 @@ async def api_opciones(request: Request):
 
 
 # ============================================================
-# CRON JOBS (llamar periódicamente desde Railway Cron o similar)
+# MODULOS DE RUTAS (extraidos de app.py para mejor organizacion)
 # ============================================================
+# Cron: web/routes/cron.py (trial-reminder, engagement, resumen-semanal, backup, cleanup)
+# Stripe: web/routes/stripe_routes.py (upgrade, checkout, webhook, billing-portal)
 
-CRON_SECRET = os.environ.get("CRON_SECRET", "")
+from web.routes.cron import router as cron_router
+from web.routes.stripe_routes import router as stripe_router
 
-
-@app.get("/cron/trial-reminder")
-async def cron_trial_reminder(request: Request):
-    """Envía recordatorio a usuarios cuyo trial expira en 2 días.
-    Protegido por CRON_SECRET para evitar acceso no autorizado.
-    Llamar: GET /cron/trial-reminder?secret=<CRON_SECRET>
-    """
-    token = request.query_params.get("secret", "")
-    if not CRON_SECRET or token != CRON_SECRET:
-        raise HTTPException(status_code=404)
-
-    from web.email_service import enviar_trial_expirando
-
-    db = get_db()
-    # Buscar usuarios en trial con 1-3 días restantes
-    ahora = datetime.utcnow()
-    limite_min = (ahora + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
-    limite_max = (ahora + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
-
-    usuarios_trial = db.execute(
-        """SELECT id, email, nombre, trial_ends_at FROM usuarios
-           WHERE plan = 'trial' AND trial_ends_at > ? AND trial_ends_at <= ?
-           AND email_verificado = 1""",
-        (limite_min, limite_max)
-    ).fetchall()
-    db.close()
-
-    enviados = 0
-    for u in usuarios_trial:
-        try:
-            fin = datetime.strptime(u["trial_ends_at"], "%Y-%m-%d %H:%M:%S")
-            dias = max(1, (fin - ahora).days)
-            if enviar_trial_expirando(u["email"], u["nombre"], dias):
-                enviados += 1
-        except Exception as e:
-            logger.error("Trial reminder failed for user %s: %s", u["id"], e)
-
-    logger.info("Trial reminder cron: %d emails sent out of %d users", enviados, len(usuarios_trial))
-    return JSONResponse({"ok": True, "enviados": enviados, "total": len(usuarios_trial)})
-
-
-@app.get("/cron/backup")
-async def cron_backup(request: Request):
-    """Crea backup de la base de datos.
-    Con PostgreSQL (Neon), los backups son automaticos del proveedor.
-    Con SQLite, crea copia local. Protegido por CRON_SECRET.
-    """
-    token = request.query_params.get("secret", "")
-    if not CRON_SECRET or token != CRON_SECRET:
-        raise HTTPException(status_code=404)
-
-    if USE_POSTGRES:
-        return JSONResponse({
-            "ok": True,
-            "message": "PostgreSQL: backups gestionados por el proveedor (Neon)",
-        })
-
-    import shutil
-    import glob as _glob
-
-    backup_dir = DB_PATH.parent / "backups"
-    backup_dir.mkdir(exist_ok=True)
-
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    backup_path = backup_dir / f"esteticai_{timestamp}.db"
-
-    try:
-        src_db = sqlite3.connect(str(DB_PATH))
-        dst_db = sqlite3.connect(str(backup_path))
-        src_db.backup(dst_db)
-        dst_db.close()
-        src_db.close()
-
-        backups = sorted(backup_dir.glob("esteticai_*.db"))
-        while len(backups) > 7:
-            oldest = backups.pop(0)
-            oldest.unlink()
-            logger.info("Deleted old backup: %s", oldest.name)
-
-        size_kb = backup_path.stat().st_size // 1024
-        logger.info("Backup created: %s (%d KB)", backup_path.name, size_kb)
-        return JSONResponse({
-            "ok": True, "file": backup_path.name, "size_kb": size_kb,
-            "backups_total": len(list(backup_dir.glob("esteticai_*.db"))),
-        })
-
-    except Exception as e:
-        logger.error("Backup failed: %s", e)
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-@app.get("/cron/cleanup")
-async def cron_cleanup(request: Request):
-    """Limpia tokens expirados de password_resets y email_verificaciones.
-    Protegido por CRON_SECRET. Llamar: GET /cron/cleanup?secret=<CRON_SECRET>
-    """
-    token = request.query_params.get("secret", "")
-    if not CRON_SECRET or token != CRON_SECRET:
-        raise HTTPException(status_code=404)
-
-    db = get_db()
-    # Eliminar tokens de más de 48 horas (usados o expirados)
-    corte = (datetime.utcnow() - timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
-
-    r1 = db.execute("DELETE FROM password_resets WHERE creado_en < ?", (corte,))
-    reset_borrados = r1.rowcount
-
-    r2 = db.execute("DELETE FROM email_verificaciones WHERE creado_en < ?", (corte,))
-    verif_borrados = r2.rowcount
-
-    db.commit()
-    db.close()
-
-    logger.info("Cleanup cron: deleted %d password_resets, %d email_verificaciones",
-                reset_borrados, verif_borrados)
-    return JSONResponse({
-        "ok": True,
-        "password_resets_borrados": reset_borrados,
-        "email_verificaciones_borradas": verif_borrados,
-    })
+app.include_router(cron_router)
+app.include_router(stripe_router)
 
 
 # ============================================================
-# STRIPE - PAGOS (skeleton, activar con STRIPE_SECRET_KEY)
+# REFERIDOS
 # ============================================================
 
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-
-# Mapeo plan → Stripe Price ID (configurar en Stripe Dashboard)
-STRIPE_PRICE_IDS = {
-    "starter": os.environ.get("STRIPE_PRICE_STARTER", ""),
-    "pro": os.environ.get("STRIPE_PRICE_PRO", ""),
-    "business": os.environ.get("STRIPE_PRICE_BUSINESS", ""),
-}
-
-
-@app.get("/upgrade", response_class=HTMLResponse)
-async def upgrade_page(request: Request):
-    user = get_usuario_actual(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    plan_info = get_info_plan_usuario(user)
-    return templates.TemplateResponse(request, "upgrade.html", context={
-        "user": user, "plan": plan_info, "planes": PLANES,
-        "stripe_activo": bool(STRIPE_SECRET_KEY),
-    })
-
-
-@app.post("/api/crear-checkout")
-async def api_crear_checkout(request: Request):
-    """Crea una sesión de Stripe Checkout para upgrade de plan."""
+@app.get("/api/mi-referido")
+async def api_mi_referido(request: Request):
+    """Devuelve el codigo de referido y las estadisticas de la usuaria."""
     user = get_usuario_actual(request)
     if not user:
         return JSONResponse({"error": "No autenticado"}, status_code=401)
 
-    if not STRIPE_SECRET_KEY:
-        return JSONResponse({
-            "error": "El sistema de pagos a\u00fan no est\u00e1 configurado. Contacta con hola@esteticai.com para activar tu plan."
-        }, status_code=503)
+    codigo = user.get("codigo_referido", "")
+    if not codigo:
+        import secrets as _secrets
+        codigo = _secrets.token_urlsafe(8)
+        with db_connection() as dbc:
+            dbc.execute("UPDATE usuarios SET codigo_referido = ? WHERE id = ?",
+                        (codigo, user["id"]))
 
-    try:
-        data = await request.json()
-    except Exception:
-        return JSONResponse({"error": "Datos no validos"}, status_code=400)
-    plan_elegido = data.get("plan", "")
-    if plan_elegido not in STRIPE_PRICE_IDS or not STRIPE_PRICE_IDS[plan_elegido]:
-        return JSONResponse({"error": "Plan no v\u00e1lido"}, status_code=400)
+    db = get_db()
+    referidas = db.execute(
+        "SELECT COUNT(*) as c FROM usuarios WHERE referido_por = ?", (user["id"],)
+    ).fetchone()["c"]
+    db.close()
 
-    try:
-        import stripe
-        stripe.api_key = STRIPE_SECRET_KEY
+    base = BASE_URL.rstrip("/")
+    enlace = f"{base}/registro?ref={codigo}"
 
-        # Crear o recuperar customer de Stripe
-        customer_id = user.get("stripe_customer_id") or ""
-        if not customer_id:
-            customer = stripe.Customer.create(
-                email=user["email"],
-                name=user["nombre"],
-                metadata={"user_id": str(user["id"])}
-            )
-            customer_id = customer.id
-            db = get_db()
-            db.execute("UPDATE usuarios SET stripe_customer_id = ? WHERE id = ?",
-                       (customer_id, user["id"]))
-            db.commit()
-            db.close()
-
-        # Crear sesión de checkout
-        base_url = str(request.base_url).rstrip("/")
-        session = stripe.checkout.Session.create(
-            customer=customer_id,
-            mode="subscription",
-            line_items=[{"price": STRIPE_PRICE_IDS[plan_elegido], "quantity": 1}],
-            success_url=f"{base_url}/upgrade/exito?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{base_url}/upgrade",
-            metadata={"user_id": str(user["id"]), "plan": plan_elegido},
-        )
-        return JSONResponse({"ok": True, "checkout_url": session.url})
-
-    except ImportError:
-        return JSONResponse({"error": "Stripe no est\u00e1 instalado en el servidor."}, status_code=503)
-    except Exception as e:
-        logger.error("Stripe checkout failed: %s", e)
-        return JSONResponse({"error": "Error al crear la sesi\u00f3n de pago."}, status_code=500)
-
-
-@app.get("/upgrade/exito", response_class=HTMLResponse)
-async def upgrade_exito(request: Request):
-    """Página de éxito tras completar el pago."""
-    user = get_usuario_actual(request)
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    # En producción el webhook actualiza el plan; esto es fallback de UX
-    plan_info = get_info_plan_usuario(user)
-    return templates.TemplateResponse(request, "upgrade_exito.html", context={
-        "user": user, "plan_nombre": plan_info["plan_nombre"],
+    return JSONResponse({
+        "ok": True,
+        "codigo": codigo,
+        "enlace": enlace,
+        "referidas": referidas,
     })
-
-
-@app.post("/stripe/webhook")
-async def stripe_webhook(request: Request):
-    """Webhook de Stripe para confirmar pagos y gestionar suscripciones."""
-    if not STRIPE_SECRET_KEY or not STRIPE_WEBHOOK_SECRET:
-        return JSONResponse({"error": "No configurado"}, status_code=503)
-
-    try:
-        import stripe
-        stripe.api_key = STRIPE_SECRET_KEY
-        payload = await request.body()
-        sig_header = request.headers.get("stripe-signature", "")
-
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, STRIPE_WEBHOOK_SECRET
-        )
-
-        if event["type"] == "checkout.session.completed":
-            session = event["data"]["object"]
-            user_id = int(session["metadata"]["user_id"])
-            plan = session["metadata"]["plan"]
-            subscription_id = session.get("subscription", "")
-            db = get_db()
-            db.execute(
-                "UPDATE usuarios SET plan = ?, stripe_subscription_id = ? WHERE id = ?",
-                (plan, subscription_id, user_id)
-            )
-            db.commit()
-            db.close()
-            logger.info("Stripe: user %s upgraded to plan %s", user_id, plan)
-
-        elif event["type"] == "customer.subscription.deleted":
-            subscription = event["data"]["object"]
-            sub_id = subscription["id"]
-            db = get_db()
-            db.execute(
-                "UPDATE usuarios SET plan = 'free', stripe_subscription_id = '' WHERE stripe_subscription_id = ?",
-                (sub_id,)
-            )
-            db.commit()
-            db.close()
-            logger.info("Stripe: subscription %s cancelled, user downgraded to free", sub_id)
-
-        return JSONResponse({"ok": True})
-
-    except Exception as e:
-        logger.error("Stripe webhook failed: %s", e)
-        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 if __name__ == "__main__":

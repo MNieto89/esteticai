@@ -8,13 +8,14 @@
     <meta property="og:title" content="{% block og_title %}Esteticai - IA para profesionales de la est&eacute;tica{% endblock %}">
     <meta property="og:description" content="Genera copys, im&aacute;genes, videos y calendarios para tu negocio de est&eacute;tica con inteligencia artificial.">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://esteticai.com/static/og-image.svg">
+    <meta property="og:image" content="{{ base_url }}/static/og-image.svg">
     <meta property="og:locale" content="es_ES">
+    <meta property="og:url" content="{{ base_url }}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Esteticai - IA para profesionales de la estética">
-    <meta name="twitter:description" content="Genera copys, imágenes, videos y calendarios para tu negocio de estética con inteligencia artificial.">
-    <meta name="twitter:image" content="https://esteticai.com/static/og-image.svg">
-    <link rel="canonical" href="https://esteticai.com">
+    <meta name="twitter:title" content="Esteticai - IA para profesionales de la est&eacute;tica">
+    <meta name="twitter:description" content="Genera copys, im&aacute;genes, videos y calendarios para tu negocio de est&eacute;tica con inteligencia artificial.">
+    <meta name="twitter:image" content="{{ base_url }}/static/og-image.svg">
+    <link rel="canonical" href="{{ base_url }}">
     <link rel="preconnect" href="https://fal.run" crossorigin>
     <link rel="preconnect" href="https://js.stripe.com" crossorigin>
     <link rel="dns-prefetch" href="https://fal.run">
@@ -41,8 +42,13 @@
         <span>Usamos cookies esenciales para que la plataforma funcione. <a href="/cookies">M&aacute;s info</a></span>
         <button class="btn btn-primary btn-sm" onclick="aceptarCookies()">Aceptar</button>
     </div>
-    <script src="/static/js/app.js?v=2.1"></script>
+    <script src="/static/js/app.js?v=2.2"></script>
     <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}</script>
+    {% if analytics_id %}
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics_id }}"></script>
+    <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ analytics_id }}',{anonymize_ip:true});</script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

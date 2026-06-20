@@ -287,6 +287,15 @@ def _migrate_pg(db):
         "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT DEFAULT ''",
         "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT DEFAULT ''",
         "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado INTEGER DEFAULT 0",
+        # Fase mejoras negocio (junio 2026)
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS utm_source TEXT DEFAULT ''",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS utm_medium TEXT DEFAULT ''",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS utm_campaign TEXT DEFAULT ''",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS onboarding_completado INTEGER DEFAULT 0",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS codigo_referido TEXT DEFAULT ''",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS referido_por INTEGER DEFAULT 0",
+        "ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS ultimo_acceso TEXT DEFAULT ''",
+        "ALTER TABLE uso_mensual ADD COLUMN IF NOT EXISTS coste_api_eur REAL DEFAULT 0.0",
     ]
     for m in migrations:
         try:
@@ -319,6 +328,23 @@ def _migrate_sqlite(db):
         db.execute("SELECT email_verificado FROM usuarios LIMIT 1")
     except sqlite3.OperationalError:
         db.execute("ALTER TABLE usuarios ADD COLUMN email_verificado INTEGER DEFAULT 0")
+
+    # Fase mejoras negocio (junio 2026)
+    try:
+        db.execute("SELECT utm_source FROM usuarios LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE usuarios ADD COLUMN utm_source TEXT DEFAULT ''")
+        db.execute("ALTER TABLE usuarios ADD COLUMN utm_medium TEXT DEFAULT ''")
+        db.execute("ALTER TABLE usuarios ADD COLUMN utm_campaign TEXT DEFAULT ''")
+        db.execute("ALTER TABLE usuarios ADD COLUMN onboarding_completado INTEGER DEFAULT 0")
+        db.execute("ALTER TABLE usuarios ADD COLUMN codigo_referido TEXT DEFAULT ''")
+        db.execute("ALTER TABLE usuarios ADD COLUMN referido_por INTEGER DEFAULT 0")
+        db.execute("ALTER TABLE usuarios ADD COLUMN ultimo_acceso TEXT DEFAULT ''")
+
+    try:
+        db.execute("SELECT coste_api_eur FROM uso_mensual LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE uso_mensual ADD COLUMN coste_api_eur REAL DEFAULT 0.0")
 
 
 def init_db():

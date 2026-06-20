@@ -218,3 +218,106 @@ def enviar_trial_expirando(to: str, nombre: str, dias_restantes: int) -> bool:
         </p>
     """)
     return enviar_email(to, f"Tu prueba gratuita termina en {dias_restantes} d\u00edas - Esteticai", html)
+
+
+# ============================================================
+# EMAILS DE ENGAGEMENT
+# ============================================================
+
+def enviar_reengagement(to: str, nombre: str, dias_inactiva: int) -> bool:
+    """Email para usuarias inactivas (no acceden hace X dias)."""
+    html = _plantilla_base(f"""
+        <h2 style="color:#333; margin-top:0;">Te echamos de menos, {nombre}</h2>
+        <p style="color:#555; line-height:1.6;">
+            Hace <strong>{dias_inactiva} d&iacute;as</strong> que no pasas por Esteticai.
+            Tu contenido no se crea solo... &iquest;o s&iacute;?
+        </p>
+        <p style="color:#555; line-height:1.6;">
+            Con la IA de Esteticai puedes tener el contenido de toda la semana
+            listo en 15 minutos. Copys, im&aacute;genes, calendarios... todo
+            adaptado a tu negocio.
+        </p>
+        <div style="text-align:center; margin:28px 0;">
+            <a href="{BASE_URL}/dashboard"
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
+                      border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
+                Volver a crear contenido
+            </a>
+        </div>
+    """)
+    return enviar_email(to, f"Hace {dias_inactiva} d\u00edas que no creas contenido - Esteticai", html)
+
+
+def enviar_resumen_semanal(to: str, nombre: str, stats: dict) -> bool:
+    """Resumen semanal de actividad: contenido generado, sugerencias."""
+    copys = stats.get("copys", 0)
+    imagenes = stats.get("imagenes", 0)
+    videos = stats.get("videos", 0)
+    fotos = stats.get("fotos", 0)
+    total = copys + imagenes + videos + fotos
+
+    if total == 0:
+        resumen = """
+        <p style="color:#555; line-height:1.6;">
+            Esta semana no has generado contenido. Recuerda que puedes crear
+            copys, im&aacute;genes y calendarios en minutos con la IA.
+        </p>
+        """
+    else:
+        resumen = f"""
+        <p style="color:#555; line-height:1.6;">
+            Esta semana has creado <strong>{total} contenidos</strong>:
+        </p>
+        <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px 0; color:#555;">Copys</td>
+                <td style="padding:8px 0; color:#333; font-weight:600; text-align:right;">{copys}</td>
+            </tr>
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px 0; color:#555;">Im&aacute;genes</td>
+                <td style="padding:8px 0; color:#333; font-weight:600; text-align:right;">{imagenes}</td>
+            </tr>
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:8px 0; color:#555;">Videos</td>
+                <td style="padding:8px 0; color:#333; font-weight:600; text-align:right;">{videos}</td>
+            </tr>
+            <tr>
+                <td style="padding:8px 0; color:#555;">Fotos mejoradas</td>
+                <td style="padding:8px 0; color:#333; font-weight:600; text-align:right;">{fotos}</td>
+            </tr>
+        </table>
+        """
+
+    html = _plantilla_base(f"""
+        <h2 style="color:#333; margin-top:0;">Tu semana en Esteticai</h2>
+        <p style="color:#555; line-height:1.6;">Hola {nombre}, aqu&iacute; tienes tu resumen:</p>
+        {resumen}
+        <div style="text-align:center; margin:28px 0;">
+            <a href="{BASE_URL}/dashboard"
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
+                      border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
+                Seguir creando
+            </a>
+        </div>
+    """)
+    return enviar_email(to, "Tu resumen semanal - Esteticai", html)
+
+
+def enviar_tip_contenido(to: str, nombre: str, tip_titulo: str, tip_texto: str) -> bool:
+    """Email con un consejo de contenido para redes sociales."""
+    html = _plantilla_base(f"""
+        <h2 style="color:#333; margin-top:0;">{tip_titulo}</h2>
+        <p style="color:#555; line-height:1.6;">Hola {nombre},</p>
+        <p style="color:#555; line-height:1.6;">{tip_texto}</p>
+        <div style="text-align:center; margin:28px 0;">
+            <a href="{BASE_URL}/dashboard"
+               style="display:inline-block; background:#62C9B8; color:#fff; padding:14px 32px;
+                      border-radius:8px; text-decoration:none; font-weight:600; font-size:16px;">
+                Probar ahora en Esteticai
+            </a>
+        </div>
+        <p style="color:#999; font-size:13px;">
+            Si no quieres recibir estos consejos, puedes desactivarlos en tu configuraci&oacute;n.
+        </p>
+    """)
+    return enviar_email(to, f"{tip_titulo} - Esteticai", html)
